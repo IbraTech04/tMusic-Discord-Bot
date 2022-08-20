@@ -1,4 +1,4 @@
-nextcord
+nextcord[voice]
 youtube_dl
 spotipy
 scdl
