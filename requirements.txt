@@ -1,0 +1,6 @@
+nextcord
+youtube_dl
+spotipy
+scdl
+bs4
+deemix
