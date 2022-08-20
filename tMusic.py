@@ -23,9 +23,10 @@ SPOTIPY_CLIENT_SECRET = 'a96c46ec319a4e878d3ac80058301041'
 sp = spotipy.Spotify(client_credentials_manager=spotipy.SpotifyClientCredentials(client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET))
 
 currentSongs = {} # Will store current song playing in each server - {server.id: song}
-
-computerName = os.environ['COMPUTERNAME'] # Get the computer name so we know whether to use prod or dev bot
- 
+try:
+    computerName = os.environ['COMPUTERNAME'] # Get the computer name so we know whether to use prod or dev bot
+except KeyError:
+    computerName = "Heroku"
 # Bot intents, setting all to True
 intents = nextcord.Intents.all()
 
