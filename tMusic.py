@@ -380,8 +380,10 @@ async def play(ctx, *, song: str = None):
     except ARLException as e:
         await ctx.send(embed = nextcord.embeds.Embed(title = ":x: Fatal Error", description = "tMusic has encountered a fatal error and cannot continue. Please try again later", color = 0xFF0000))
         channel = tMusic.get_channel(1010952626185179206) 
+        await message.delete()
         #ping TechMaster04#5002
-        await channel.send("@TechMaster04#5002, my ARL might be out of date. Please update it!")
+        user = tMusic.get_user(516413751155621899)
+        await channel.send(user.mention + " my ARL might be out of date. Please update it!")
     except SongNotFoundException as e:
         embed = nextcord.embeds.Embed(title=":x: Error", description="Song not found. Try pasting a Spotify/Deezer link instead", color=0xff0000)
         await message.delete()
@@ -391,9 +393,10 @@ async def play(ctx, *, song: str = None):
     except Exception as e:
         await ctx.send(embed = nextcord.embeds.Embed(title = ":x: Fatal Error", description = "tMusic has encountered a fatal error and cannot continue. Please try again later", color = 0xFF0000))
         channel = tMusic.get_channel(1010952626185179206) 
+        await message.delete()
         #ping TechMaster04#5002
-        await channel.send("@TechMaster04#5002, I've encountered an error. Please update me!")
-        await channel.send("```" + e + "```" + "```" + traceback.format_exc() + "```")
+        user = tMusic.get_user(516413751155621899)
+        await channel.send(user.mention + "I've encountered an error. Please update me!" + "```" + e + "```" + "```" + traceback.format_exc() + "```")
     else:
         if (voice and voice.is_playing()):
             song = currentSongs[ctx.message.guild.id]
