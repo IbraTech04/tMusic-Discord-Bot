@@ -7,6 +7,7 @@
 import asyncio
 import shutil
 import threading
+import traceback
 from urllib.request import urlopen
 import requests
 import nextcord
@@ -17,6 +18,7 @@ import spotipy
 import subprocess
 import youtube_dl
 from bs4 import BeautifulSoup
+from Errors import *
 from song import *
 SPOTIPY_CLIENT_ID = 'c630433b292d477990ebb8dcc283b8f5'
 SPOTIPY_CLIENT_SECRET = 'a96c46ec319a4e878d3ac80058301041'
@@ -151,15 +153,25 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
         song = requests.get("https://api.deezer.com/search?q={0}&limit=1".format(songName))
 
         #get song link
-        finalLink = song.json()['data'][0]['link']
-
+        try:
+            finalLink = song.json()['data'][0]['link']
+        except:
+            #throw SongNotFoundException
+            raise SongNotFoundException("Song not found")
         directory = os.path.join(os.path.dirname(os.path.realpath(__file__)),str(ctx.message.guild.id))
         if (not os.path.isdir(directory)):
             os.makedirs(directory)
         cmd = "deemix --portable -p {0} {1}".format(directory, finalLink)
     if (deezer):
         proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        stdout, stderr = await proc.communicate() 
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
+        except asyncio.TimeoutError:
+            #throw new error called ARLException
+            raise ARLException("Timeout Error")
+            
+        #stdout, stderr = await proc.communicate(timeout=10) 
+        output = stdout.decode().splitlines()[4].split(':')[0].split(']')[1].lstrip().rstrip()
         return stdout.decode().splitlines()[4].split(':')[0].split(']')[1].lstrip().rstrip()
     
     else:
@@ -177,7 +189,20 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
             with (open(os.path.join(str(ctx.message.guild.id), output + ".png"), 'wb')) as f:
                 f.write(urlopen(images[0]['src']).read())
         return output
-    
+
+@tMusic.command(pass_context=True)
+async def setARL(ctx, arl):
+    """
+    Command which updates the .arl file in the config directory
+    """
+    #check if it's techmaster or not
+    if (ctx.message.author.id == 516413751155621899):
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config", ".arl"), "w") as f:
+            f.write(arl)
+        await ctx.send("ARL Updated")
+        return
+    await ctx.send("You do not have permission to use this command. Only DaddyTMI can :pleading_face:")
+
 @tMusic.command(pass_context = True, aliases=['Help', 'help', "HelpMeWithThisStupidBot", "Commands"])
 async def commands(ctx):
     embed=nextcord.embeds.Embed(color=0xff0000)
@@ -283,6 +308,8 @@ async def play(ctx, *, song: str = None):
         await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "You must be in the same VC as me to use this command", color = 0xFF0000))
         return
     try:
+        if (not os.path.isdir(str(ctx.message.guild.id))): #If the server's folder doesn't exist, create it
+            os.makedirs(str(ctx.message.guild.id))
         embed = nextcord.embeds.Embed(title=str(loadingEmoji) + " Loading Song", description="Please wait", color=0xFFFF00)
         await ctx.send(embed = embed)
         #get id of last message sent in channel
@@ -350,12 +377,23 @@ async def play(ctx, *, song: str = None):
                 return
             songName = fileName[:-4]
             await ctx.message.attachments[0].save(os.path.join(str(ctx.message.guild.id), fileName))
-    except Exception as e:
+    except ARLException as e:
+        await ctx.send(embed = nextcord.embeds.Embed(title = ":x: Fatal Error", description = "tMusic has encountered a fatal error and cannot continue. Please try again later", color = 0xFF0000))
+        channel = tMusic.get_channel(1010952626185179206) 
+        #ping TechMaster04#5002
+        await channel.send("@TechMaster04#5002, my ARL might be out of date. Please update it!")
+    except SongNotFoundException as e:
         embed = nextcord.embeds.Embed(title=":x: Error", description="Song not found. Try pasting a Spotify/Deezer link instead", color=0xff0000)
         await message.delete()
         await ctx.reply(embed = embed)
         #disconnect from voice channel
         await ctx.voice_client.disconnect()
+    except Exception as e:
+        await ctx.send(embed = nextcord.embeds.Embed(title = ":x: Fatal Error", description = "tMusic has encountered a fatal error and cannot continue. Please try again later", color = 0xFF0000))
+        channel = tMusic.get_channel(1010952626185179206) 
+        #ping TechMaster04#5002
+        await channel.send("@TechMaster04#5002, I've encountered an error. Please update me!")
+        await channel.send("```" + e + "```" + "```" + traceback.format_exc() + "```")
     else:
         if (voice and voice.is_playing()):
             song = currentSongs[ctx.message.guild.id]
