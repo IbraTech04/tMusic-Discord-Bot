@@ -168,10 +168,13 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
         except asyncio.TimeoutError:
             #throw new error called ARLException
-            raise ARLException("Timeout Error")
-            
+            raise ARLException("ARL Error")
+        
+        output = stdout.decode()
+        if (output == "Paste here your arl:"):
+            raise ARLException("ARL Error")
+        
         #stdout, stderr = await proc.communicate(timeout=10) 
-        output = stdout.decode().splitlines()[4].split(':')[0].split(']')[1].lstrip().rstrip()
         return stdout.decode().splitlines()[4].split(':')[0].split(']')[1].lstrip().rstrip()
     
     else:
@@ -396,7 +399,7 @@ async def play(ctx, *, song: str = None):
         await message.delete()
         #ping TechMaster04#5002
         user = tMusic.get_user(516413751155621899)
-        await channel.send(user.mention + "I've encountered an error. Please update me!" + "```" + e + "```" + "```" + traceback.format_exc() + "```")
+        await channel.send(user.mention + "I've encountered an error. Please update me!" + "```" + str(e) + "```" + "```" + str(traceback.format_exc()) + "```")
     else:
         if (voice and voice.is_playing()):
             song = currentSongs[ctx.message.guild.id]
