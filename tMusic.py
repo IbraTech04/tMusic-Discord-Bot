@@ -443,8 +443,6 @@ async def play(ctx, *, song: str = None):
             if (song.__contains__("playlist") and song.__contains_("youtube")):                 
                 await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "YouYube playlists are not yet supported. Stay tuned for the next update which will bring YouTube playlist support!", color = 0xFF0000))
                 return
-            raise Exception("No playlist detected")
-
             songName = await downloadSong(song, ctx) #Download the song and get the name of the song, if no playlist is detected
         else:
             fileName = ctx.message.attachments[0].filename
