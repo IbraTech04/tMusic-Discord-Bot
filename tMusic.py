@@ -210,18 +210,76 @@ async def setARL(ctx, arl):
         return
     await ctx.send("You do not have permission to use this command. Only DaddyTMI can :pleading_face:")
 
-@tMusic.command(pass_context = True, aliases=['Help', 'help', "HelpMeWithThisStupidBot", "Commands"])
-async def commands(ctx):
-    embed=nextcord.embeds.Embed(color=0xff0000)
-    embed.add_field(name="tMusic Commands", value="Pretty much the stuff that you should be using")
-    embed.add_field(name="tPlay", value="To play or queue a song. Must be in a VC to use this command. We support YouTube links, SoundCloud links, Spotify links, Deezer links, search queries, and local files in both playlist and track variety. Coming Soon: Bandcamp support, YouTube Playlist support, multiple attached files")
-    embed.add_field(name="tLoop", value="Used to toggle the server-wide song/queue loop feature. By using tLoop alone, you loop the current playing song. By adding the 'queue' argument, you loop the entire queue.")
-    embed.add_field(name="tQueue", value="To view the song queue")
-    embed.add_field(name="tSong", value="Used to view the currently playing song")
-    embed.add_field(name="tPause and tResume", value="To pause and resume the currently playing song", inline = True)
-    embed.add_field(name="tSkip", value="Used to skip the currently playing song. By default, tSkip skips only one song in the queue. However, by following tSkip with a number, you can skip that number of tracks in the queue", inline = True)
-
-    await ctx.send(embed=embed)    
+@tMusic.command(pass_context = True, aliases=['Help', 'help', "HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
+async def commands(ctx, command: str = None):
+    if (not command):
+        embed=nextcord.embeds.Embed(color=0xff0000)
+        embed.title=":information_source: About tMusic"
+        embed.description = "tMusic is the BEST Discord Music bot, supporting music from more sources than the competition! Here are the commands for tMusic:"
+        embed.add_field(name="tPlay", value="Used to play and add songs to the queue")
+        embed.add_field(name="tLoop", value="Used to toggle the server-wide song/queue loop feature.")
+        embed.add_field(name="tQueue", value="To view the song queue")
+        embed.add_field(name="tSong", value="Used to view the currently playing song")
+        embed.add_field(name="tPause and tResume", value="To pause and resume the currently playing song", inline = True)
+        embed.add_field(name="tSkip", value="Used to skip the currently playing song.", inline = True)
+        embed.set_footer(text="Hint: Use tCommands followed by a command name to get more info about a specific command")
+        await ctx.send(embed=embed)
+        return
+    command = command.lower()
+    if (command == "tplay"):
+        embed = nextcord.embeds.Embed(title = "About tPlay", description="tPlay is the main command utilized witih tMusic" ,color=0xff0000)
+        embed.add_field(name="Description", value="Used to play and add songs to the queue", inline = True)
+        embed.add_field(name="Usage", value="tPlay <song>", inline = True)
+        embed.add_field(name="Supported <song> formats", value="tMusic supports a wide array of sources for your music. tMusic supports Spotify links, Deezer links, YouTube links, SoundCloud links, Search Queries, Spotify Playlists, Deezer Playlists, and attached files", inline = True)
+        embed.add_field(name="Example", value="`tPlay https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT?si=3d28f2ff6178489d`", inline = True)
+        embed.add_field(name="Coming Soon" ,value="tMusic will soon support YouTube Playlists and mutliple attached files!", inline = True)     
+        await ctx.send(embed=embed)
+        return
+    if (command == "tloop"):
+        embed = nextcord.embeds.Embed(title = "About tLoop", description="tLoop is an integral part of tMusic's experience" ,color=0xff0000)
+        embed.add_field(name="Description", value="Used to loop the currently playing song, or the current queue", inline = True)
+        embed.add_field(name="Usage", value="tLoop <optional argument>", inline = True)
+        embed.add_field(name="Supported <optional argument> formats", value="By default, leaving the argument blank loops the currently playing song. However, by adding the 'queue' keyword after tLoop, tMusic will instead enable queue looping" , inline = True)
+        embed.add_field(name="Example", value="`tLoop queue`", inline = True)
+        await ctx.send(embed=embed)
+        return
+    if (command == "tqueue"):
+        embed = nextcord.embeds.Embed(title = "About tQueue", description="tQueue is an integral part of tMusic's experience" ,color=0xff0000)
+        embed.add_field(name="Description", value="Used to view the upcoming queue of songs", inline = True)
+        embed.add_field(name="Usage", value="tQueue", inline = True)
+        embed.add_field(name="Example", value="`tQueue`", inline = True)
+        await ctx.send(embed=embed)
+        return
+    if (command == "tsong"):
+        embed = nextcord.embeds.Embed(title = "About tSong", description="tSong is a unique yet important part of tMusic" ,color=0xff0000)
+        embed.add_field(name="Description", value="Used to view the currently playing song", inline = True)
+        embed.add_field(name="Usage", value="tSong", inline = True)
+        embed.add_field(name="Example", value="`tSong`", inline = True)
+        await ctx.send(embed=embed)
+        return
+    if (command == "tpause"):
+        embed=nextcord.embeds.Embed(title = "About tPause", description="tPause is an important part of tMusic's functionality" ,color=0xff0000)
+        embed.add_field(name="Description", value="Used to pause the currently playing song", inline = True)
+        embed.add_field(name="Usage", value="tPause", inline = True)
+        embed.add_field(name="Example", value="`tPause`", inline = True)
+        await ctx.send(embed=embed)
+        return
+    if (command == "tresume"):
+        embed = nextcord.embeds.Embed(title = "About tResume", description="tResume is an important part of tMusic's functionality" ,color=0xff0000)
+        embed.add_field(name="Description", value="Used to resume a currently playing song", inline = True)
+        embed.add_field(name="Usage", value="tResume", inline = True)
+        embed.add_field(name="Example", value="`tResume`", inline = True)
+        await ctx.send(embed=embed)
+        return
+    if (command == "tskip"):
+        embed = nextcord.embeds.Embed(title = "About tSkip", description="tSkip is an important part of tMusic's functionality" ,color=0xff0000)
+        embed.add_field(name="Description", value="Used to skip songs in queue", inline = True)
+        embed.add_field(name="Usage", value="tSkip <optional argument>", inline = True)
+        embed.add_field(name="Supported <optional argument> formats", value="By default, leaving the argument blank skips the currently playing song. However, by adding the a number after tSkip, tMusic will instead skip that amount of songs in queue" , inline = True)
+        embed.add_field(name="Example", value="`tSkip 2`", inline = True)
+        await ctx.send(embed=embed)
+        return
+    await ctx.send(embed=nextcord.embeds.Embed(title = "Command not found", description="The command you entered was not found. Please check your spelling and try again", color=0xff0000).set_footer(text="Hint: Use tCommands to view a list of commands"))
 
 @tMusic.command(pass_context=True, aliases=['Loop', 'repeat', 'Repeat'])
 async def loop(ctx, type: str = None):
