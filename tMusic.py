@@ -4,8 +4,10 @@
 
 # Discord Imports, to interact with API
 
+from ast import alias
 import asyncio
 import shutil
+from telnetlib import TM
 import threading
 import traceback
 from urllib.request import urlopen
@@ -24,6 +26,7 @@ SPOTIPY_CLIENT_ID = 'c630433b292d477990ebb8dcc283b8f5'
 SPOTIPY_CLIENT_SECRET = 'a96c46ec319a4e878d3ac80058301041'
 sp = spotipy.Spotify(client_credentials_manager=spotipy.SpotifyClientCredentials(client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET))
 
+
 currentSongs = {} # Will store current song playing in each server - {server.id: song}
 try:
     computerName = os.environ['COMPUTERNAME'] # Get the computer name so we know whether to use prod or dev bot
@@ -35,9 +38,10 @@ intents = nextcord.Intents.all()
 if (computerName == "IBRAPC"): # If the code is running on my computer, do not run the main bot - run the dev bot
     tMusic = commands.Bot(intents = intents, command_prefix = 'd', activity = nextcord.Activity(type=nextcord.ActivityType.listening, name="TechMaster complain about my code"))
 else:
-    tMusic = commands.Bot(intents = intents, command_prefix = 't', activity = nextcord.Activity(type=nextcord.ActivityType.listening, name="tMusic - The Rewrite...."))
+    tMusic = commands.Bot(intents = intents, command_prefix = 't', activity = nextcord.Activity(type=nextcord.ActivityType.watching, name="Myself get beta tested"))
 
 tMusic.remove_command('help') # Remove the help command
+
 
 async def downloadSpotify(ctx, playlist):
     """
@@ -210,15 +214,16 @@ async def setARL(ctx, arl):
 async def commands(ctx):
     embed=nextcord.embeds.Embed(color=0xff0000)
     embed.add_field(name="tMusic Commands", value="Pretty much the stuff that you should be using")
-    embed.add_field(name="tPlay", value="To play or queue a song. Must be in a VC to use this command. We support YouTube links, SoundCloud links, Spotify links, Deezer links, search queries, and local files in both playlist and track variety.", inline=False)
-    embed.add_field(name="tLoop", value="Used to toggle the server-wide song/queue loop feature")
+    embed.add_field(name="tPlay", value="To play or queue a song. Must be in a VC to use this command. We support YouTube links, SoundCloud links, Spotify links, Deezer links, search queries, and local files in both playlist and track variety. Coming Soon: Bandcamp support, YouTube Playlist support, multiple attached files")
+    embed.add_field(name="tLoop", value="Used to toggle the server-wide song/queue loop feature. By using tLoop alone, you loop the current playing song. By adding the 'queue' argument, you loop the entire queue.")
     embed.add_field(name="tQueue", value="To view the song queue")
     embed.add_field(name="tSong", value="Used to view the currently playing song")
-    embed.add_field(name="tCredits", value="Used to view the people behind tMusic")
     embed.add_field(name="tPause and tResume", value="To pause and resume the currently playing song", inline = True)
+    embed.add_field(name="tSkip", value="Used to skip the currently playing song. By default, tSkip skips only one song in the queue. However, by following tSkip with a number, you can skip that number of tracks in the queue", inline = True)
+
     await ctx.send(embed=embed)    
 
-@tMusic.command(pass_context=True)
+@tMusic.command(pass_context=True, aliases=['Loop', 'repeat', 'Repeat'])
 async def loop(ctx, type: str = None):
     """
     Command which manipulates the linkedlists in the currentSongs dictionary to loop either a particular song or a queue
@@ -281,8 +286,9 @@ async def printAllEmojis(ctx):
     for emoji in emojis:
         toSend += (emoji.name + " " + str(emoji.id))
         toSend += "\n"
-    await ctx.reply(toSend)       
-@tMusic.command(pass_context=True)
+    await ctx.reply(toSend)    
+   
+@tMusic.command(pass_context = True, aliases=['Play', 'p','pleasePlay', 'FindSong', "findSong", "getSongToPause"])
 async def play(ctx, *, song: str = None):
     """Plays a song.
     If there is a song currently in the VC, it will be queued.
@@ -368,25 +374,26 @@ async def play(ctx, *, song: str = None):
                     return
                 pass
             if (song.__contains__("playlist") and song.__contains_("youtube")):                 
-                await ctx.send(embed = nextcord.embeds.Embed(title = ":x: Error", description = "YouYube playlists are not yet supported. Stay tuned for the next update which will bring YouTube playlist support!", color = 0xFF0000))
+                await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "YouYube playlists are not yet supported. Stay tuned for the next update which will bring YouTube playlist support!", color = 0xFF0000))
                 return
             songName = await downloadSong(song, ctx) #Download the song and get the name of the song, if no playlist is detected
         else:
             fileName = ctx.message.attachments[0].filename
-            if (not fileName.endswith(".mp3")):
+            if (not fileName.endswith(".mp3") and not fileName.endswith(".wav")):
                 await message.delete()
-                await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "You must provide a .mp3 file. Support for more filetypes will be added in a future update", color = 0xFF0000))
+                await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "You must provide an .mp3 or .wav file. Support for more filetypes will be added in a future update", color = 0xFF0000))
                 #delete message
                 return
             songName = fileName[:-4]
             await ctx.message.attachments[0].save(os.path.join(str(ctx.message.guild.id), fileName))
     except ARLException as e:
-        await ctx.send(embed = nextcord.embeds.Embed(title = ":x: Fatal Error", description = "tMusic has encountered a fatal error and cannot continue. Please try again later", color = 0xFF0000))
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Fatal Error", description = "tMusic has encountered a fatal error and cannot continue. Please try again later. This bug has automatically been reported to my author, along with any relavent context", color = 0xFF0000))
         channel = tMusic.get_channel(1010952626185179206) 
         await message.delete()
         #ping TechMaster04#5002
         user = tMusic.get_user(516413751155621899)
         await channel.send(user.mention + " my ARL might be out of date. Please update it!")
+        await ctx.voice_client.disconnect()
     except SongNotFoundException as e:
         embed = nextcord.embeds.Embed(title=":x: Error", description="Song not found. Try pasting a Spotify/Deezer link instead", color=0xff0000)
         await message.delete()
@@ -394,12 +401,13 @@ async def play(ctx, *, song: str = None):
         #disconnect from voice channel
         await ctx.voice_client.disconnect()
     except Exception as e:
-        await ctx.send(embed = nextcord.embeds.Embed(title = ":x: Fatal Error", description = "tMusic has encountered a fatal error and cannot continue. Please try again later", color = 0xFF0000))
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Fatal Error", description = "tMusic has encountered a fatal error and cannot continue. Please try again later. This bug has automatically been reported to my author, along with any relavent context", color = 0xFF0000))
         channel = tMusic.get_channel(1010952626185179206) 
         await message.delete()
         #ping TechMaster04#5002
         user = tMusic.get_user(516413751155621899)
-        await channel.send(user.mention + "I've encountered an error. Please update me!" + "```" + str(e) + "```" + "```" + str(traceback.format_exc()) + "```")
+        await channel.send(user.mention + " I've encountered an error. Please update me!" + "```" + str(e) + "```" + "```" + str(traceback.format_exc()) + "```")
+        await ctx.voice_client.disconnect()
     else:
         if (voice and voice.is_playing()):
             song = currentSongs[ctx.message.guild.id]
@@ -423,7 +431,24 @@ async def play(ctx, *, song: str = None):
         checkQueue(ctx, True)
         return
 
-@tMusic.command(pass_context=True)
+@tMusic.command(pass_context=True, aliases=['Resume'])
+async def resume(ctx):
+    if (not ctx.voice_client):
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "I am not in a voice channel", color = 0xFF0000))
+        return
+    if (not ctx.message.author.voice):
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "You are not in a voice channel", color = 0xFF0000))
+        return
+    if (not inSameVC(ctx)):
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "YYou must be in the same VC as me to use this command", color = 0xFF0000))
+        return
+    if (not ctx.voice_client.is_paused()):
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "Nothing's paused", color = 0xFF0000))
+        return
+    ctx.voice_client.resume()
+    await ctx.send(embed = nextcord.embeds.Embed(title = ":play_pause: Resumed", description = "Resumed", color = 0x006400))
+
+@tMusic.command(pass_context = True, aliases=['Pause', 'ununpause', "Ununpause", "UnUnpause"]) #Pause the current song
 async def pause(ctx):
     voice = nextcord.utils.get(tMusic.voice_clients,guild=ctx.guild) #Getting the voice client - this will tell us if tMusic is connected to a voice channel or not
     
@@ -435,7 +460,7 @@ async def pause(ctx):
         await ctx.reply(embed = nextcord.embeds.Embed(title=":pause_button: Paused", description=currentSongs[ctx.message.guild.id].getSongName(), color=0x00ff00))
         return
     await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="There is nothing playing", color=0xff0000))
-@tMusic.command(pass_context=True)
+@tMusic.command(pass_context=True, aliases=['Leave', 'fuckOff', 'fuckoff', 'gtfo', 'Fuckoff', 'Gtfo'])
 async def leave(ctx):
     """
     Command which leaves the voice channel the bot is in
@@ -455,7 +480,7 @@ async def leave(ctx):
     except OSError as e:
         pass
 
-@tMusic.command(pass_context=True)
+@tMusic.command(pass_context=True, aliases=['Queue', 'songList', 'songs', 'SongList', 'Songs'])
 async def queue(ctx):
     """
     Command which displays the queue of songs
@@ -473,7 +498,14 @@ async def queue(ctx):
         song = song.nextSong
         i += 1
     await ctx.send(embed = embed)
-@tMusic.command(pass_context=True)
+
+@tMusic.command(pass_context=True, aliases=['currentSong', 'CurrentSong', 'whatsPlaying', 'WhatsPlaying'])
+async def song(ctx):
+    song = currentSongs[ctx.message.guild.id]
+    file = song.getAlbumArt()
+    await ctx.send(file = file, embed = nextcord.embeds.Embed(title=":notes: Now Playing", description=song.getSongName(), color=0x00008B))
+
+@tMusic.command(pass_context=True, aliases=['Skip', 'next', 'Next'])
 async def skip(ctx, amount = 1):
     """
     Command which skips the current song
@@ -490,7 +522,7 @@ async def skip(ctx, amount = 1):
         await ctx.reply(embed=nextcord.embeds.Embed(title=":x: Error", description="I am not playing anything", color=0xff0000))
         return
     if (not currentSongs[ctx.message.guild.id].nextSong):
-        await ctx.reply(embed=nextcord.embeds.Embed(title=":x: Error", description="There is nothing in the queue. Try tStop instead", color=0xff0000))
+        await ctx.reply(embed=nextcord.embeds.Embed(title=":x: Error", description="There is nothing in the queue. Try tPause instead", color=0xff0000))
         return
     embed = nextcord.embeds.Embed(title=":fast_forward: Skipped", description="{0}".format(currentSongs[ctx.message.guild.id].getSongName()), color=0x00ff00)
     await ctx.send(embed=embed)
