@@ -6,6 +6,7 @@
 
 from ast import alias
 import asyncio
+from cgitb import text
 import shutil
 from telnetlib import TM
 import threading
@@ -98,25 +99,20 @@ def getVideoTitle(youtubeLink):
     Legacy Code: Likely will not be rewritten to support tCodeV2 standards
     Feature wasn't really used in the end, but I'm keeping it here in case it's needed in the future
     """
+    ydl = youtube_dl.YoutubeDL({})
+    video = ydl.extract_info(youtubeLink, download=False)
+    #check if artist and track aren not null
+    #get the title
     try:
-        ydl = youtube_dl.YoutubeDL({})
-        with ydl:
-            video = ydl.extract_info(youtubeLink, download=False)
-            #check if artist and track aren not null
-            #get the title
-            title = video['title']
-            try: #check if the video has an artist
-                toReturn = ('{} - {}'.format(video['artist'], video['track']))
-            except:
-                if ("(" in title):
-                    toReturn = title.split("(")[0].split("ft.")[0]
-                else:
-                    #get channel name
-                    channel = video['uploader']
-                    toReturn = channel[:-1] + " " + title
-        return toReturn
+        if (video['track'] != None and video['artist'] != None):
+            return video['artist'] + " " + video['track']
     except:
-        return None
+        return video['title'].split("(")[0].split("[")[0].split("|")[0] #Extract pure song title from video
+    """
+    Most of the time, YouTube Content ID adds metadata to the video telling us what the song is, but for songs without content ID we need to use the title
+    
+    Most song titles are in th form of "Artist - Track (<media type>)" The <media type> is often separated by the beginning of the title by either '(', '[' or '|'. So, if we split the title by these characters, we can get the pure song title
+    """      
 
 async def downloadSong (songName, ctx): #Downloads the song and returns the path to the file
     """
@@ -135,16 +131,20 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
         #otherwise if its a youtube link
         elif ("youtube" in str(songName).lower()):
             #get the youtube video title
-            video = str(getVideoTitle(songName))
-            if (video != "None"):
-                print(video)
-                song = sp.search(video, limit=1)
-                finalLink = song['tracks']['items'][0]['external_urls']['spotify']
-                directory = os.path.join(os.path.dirname(os.path.realpath(__file__)),str(ctx.message.guild.id))
-                if (not os.path.isdir(directory)):
-                    os.makedirs(directory)
-                cmd = "deemix --portable -p {0} {1}".format(directory, finalLink)
-                deezer = True
+            songTitle = str(getVideoTitle(songName))
+            print(songTitle)
+            #user deezer api to get the song
+            request = requests.get("https://api.deezer.com/search?q={0}".format(songTitle))
+            request = request.json()
+            #check if deezer api returned an error
+            if (request['total']==0):
+                raise SongNotFoundException("No song found")
+            directory = os.path.join(os.path.dirname(os.path.realpath(__file__)),str(ctx.message.guild.id))
+            if (not os.path.isdir(directory)):
+                os.makedirs(directory)
+            finalLink = request['data'][0]['link']
+            cmd = "deemix --portable -p {0} {1}".format(directory, finalLink)
+            deezer = True
         else: #its a soundcloud link 
             directory = os.path.join(os.path.dirname(os.path.realpath(__file__)),str(ctx.message.guild.id))
             if (not os.path.isdir(directory)):
@@ -209,6 +209,15 @@ async def setARL(ctx, arl):
         await ctx.send("ARL Updated")
         return
     await ctx.send("You do not have permission to use this command. Only DaddyTMI can :pleading_face:")
+
+@tMusic.event
+async def on_guild_join(guild):
+    if guild.system_channel: # If it is not None
+        embed=nextcord.embeds.Embed(title=":notes: Welcome to tMusic", description="Hi :wave:! Thank you for inviting me to your server! Use tPlay to get started!", color=0x00ff00)
+        embed.add_field(text="Important Note:", value="Some users may experience degraded audio quality when setting tMusic's user volume to 100. For optimal results, we reccomend setting tMusic's user volume to ~80%", inline=False)
+        embed.set_footer(text="Hint: Use the command `tHelp` to see a list of commands")
+        channel = guild.system_channel
+        await channel.send(embed=embed)
 
 @tMusic.command(pass_context = True, aliases=['Help', 'help', "HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
 async def commands(ctx, command: str = None):
@@ -434,6 +443,8 @@ async def play(ctx, *, song: str = None):
             if (song.__contains__("playlist") and song.__contains_("youtube")):                 
                 await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "YouYube playlists are not yet supported. Stay tuned for the next update which will bring YouTube playlist support!", color = 0xFF0000))
                 return
+            raise Exception("No playlist detected")
+
             songName = await downloadSong(song, ctx) #Download the song and get the name of the song, if no playlist is detected
         else:
             fileName = ctx.message.attachments[0].filename
@@ -451,21 +462,18 @@ async def play(ctx, *, song: str = None):
         #ping TechMaster04#5002
         user = tMusic.get_user(516413751155621899)
         await channel.send(user.mention + " my ARL might be out of date. Please update it!")
-        await ctx.voice_client.disconnect()
     except SongNotFoundException as e:
         embed = nextcord.embeds.Embed(title=":x: Error", description="Song not found. Try pasting a Spotify/Deezer link instead", color=0xff0000)
         await message.delete()
         await ctx.reply(embed = embed)
         #disconnect from voice channel
-        await ctx.voice_client.disconnect()
     except Exception as e:
         await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Fatal Error", description = "tMusic has encountered a fatal error and cannot continue. Please try again later. This bug has automatically been reported to my author, along with any relavent context", color = 0xFF0000))
         channel = tMusic.get_channel(1010952626185179206) 
         await message.delete()
         #ping TechMaster04#5002
         user = tMusic.get_user(516413751155621899)
-        await channel.send(user.mention + " I've encountered an error. Please update me!" + "```" + str(e) + "```" + "```" + str(traceback.format_exc()) + "```")
-        await ctx.voice_client.disconnect()
+        await channel.send(user.mention + f" I've encountered an error; Please investigate ``` {str(e)} ```  ``` {str(traceback.format_exc())} ``` My search query was: `{song}` \n This happened in: {ctx.message.guild.name} - {ctx.message.channel.name} \n {ctx.message.author.name} used this command") 
     else:
         if (voice and voice.is_playing()):
             song = currentSongs[ctx.message.guild.id]
@@ -600,6 +608,6 @@ async def on_ready():
 
 # Running the bot
 if (computerName == "IBRAPC"): # If the code is running on my computer, do not run the main bot - run the dev bot
-    tMusic.run('ODk1ODUyMjQ1MTIyNDQ5NDM4.YV-law.nnA02HDvyZuKXdCYrq_sZjl9XAM') #Dev Token
+    tMusic.run(os.getenv('tMusicDevToken')) #Dev Token
 else:
-    tMusic.run('ODg3NDgxMTY1MjkwODAzMjEw.YUExPg.6-5n60OMYfOPfNbMyTbXhim97fg') #Main Token
+    tMusic.run(str(os.getenv('tMusicToken'))) #Main Token
