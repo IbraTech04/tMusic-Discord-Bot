@@ -93,7 +93,7 @@ def inSameVC(ctx):
     """
     return ctx.author.voice and ctx.author.voice.channel.id == ctx.voice_client.channel.id
 
-def getVideoTitle(youtubeLink):
+async def getVideoTitle(youtubeLink):
     """
     Method which uses ytdl to get the title of a youtube video, and returns it
     Legacy Code: Likely will not be rewritten to support tCodeV2 standards
@@ -131,7 +131,7 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
         #otherwise if its a youtube link
         elif ("youtube" in str(songName).lower()):
             #get the youtube video title
-            songTitle = str(getVideoTitle(songName))
+            songTitle = str(await getVideoTitle(songName))
             print(songTitle)
             #user deezer api to get the song
             request = requests.get("https://api.deezer.com/search?q={0}".format(songTitle))
@@ -212,12 +212,24 @@ async def setARL(ctx, arl):
 
 @tMusic.event
 async def on_guild_join(guild):
+    embed=nextcord.embeds.Embed(title=":notes: Welcome to tMusic", description="Hi :wave:! Thank you for inviting me to your server! Use tPlay to get started!", color=0x00ff00)
+    embed.add_field(name="Important Note:", value="Some users may experience degraded audio quality when setting tMusic's user volume to 100. For optimal results, we reccomend setting tMusic's user volume to ~80%", inline=False)
+    embed.set_footer(text="Hint: Use the command `tHelp` to see a list of commands")
+    channel = guild.system_channel
     if guild.system_channel: # If it is not None
-        embed=nextcord.embeds.Embed(title=":notes: Welcome to tMusic", description="Hi :wave:! Thank you for inviting me to your server! Use tPlay to get started!", color=0x00ff00)
-        embed.add_field(text="Important Note:", value="Some users may experience degraded audio quality when setting tMusic's user volume to 100. For optimal results, we reccomend setting tMusic's user volume to ~80%", inline=False)
-        embed.set_footer(text="Hint: Use the command `tHelp` to see a list of commands")
-        channel = guild.system_channel
         await channel.send(embed=embed)
+    else: #If the server doesn't have a system channel, we need to get creative with a way to inform the user
+        guildTextChannels = guild.text_channels
+        #Now, we have to sort the guild text channels by their position
+        guildTextChannels.sort(key=lambda x: x.position)
+        #now that we have sorted the channels, we need to iterate and find the first one with general in the name
+        for channel in guildTextChannels:
+            if "general" in channel.name.lower():
+                await channel.send(embed=embed)
+                return
+        #if we get here, we didn't find a general channel - we'll just send it to the first channel
+        guildTextChannels[0].send(embed=embed)
+        return
 
 @tMusic.command(pass_context = True, aliases=['Help', 'help', "HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
 async def commands(ctx, command: str = None):
