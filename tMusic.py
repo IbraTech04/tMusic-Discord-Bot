@@ -231,6 +231,20 @@ async def on_guild_join(guild):
         guildTextChannels[0].send(embed=embed)
         return
 
+@tMusic.event
+async def on_ready():
+    """
+    Displays information about the bot when it is ready
+    """
+    print("Logged in as " + tMusic.user.name)
+    print("tMusic is ready to go!")
+
+@tMusic.command(pass_context=True)
+async def delete(ctx, amount: int):
+    #check if it's techmaster or not
+    if (ctx.message.author.id == 516413751155621899):
+        #delete the amount of messages specified
+        await ctx.message.channel.purge(limit=amount + 1)
 @tMusic.command(pass_context = True, aliases=['Help', 'help', "HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
 async def commands(ctx, command: str = None):
     if (not command):
@@ -609,13 +623,11 @@ async def skip(ctx, amount = 1):
     voice.stop()
 
 @tMusic.event
-async def on_ready():
-    """
-    Displays information about the bot when it is ready
-    """
-    print("Logged in as " + tMusic.user.name)
-    print("tMusic is ready to go!")
-
+async def on_message(message):
+    if tMusic.user.mentioned_in(message):
+        await message.reply(embed=nextcord.embeds.Embed(title=":notes: Hi! I'm tMusic!", description="Use tPlay to get started, or tHelp to view a list of my commands!", color=0x00ff00))
+    else:
+        await tMusic.process_commands(message)
 # Running the bot
 if (computerName == "IBRAPC"): # If the code is running on my computer, do not run the main bot - run the dev bot
     tMusic.run(os.getenv('tMusicDevToken')) #Dev Token
