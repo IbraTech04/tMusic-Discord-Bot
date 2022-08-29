@@ -27,6 +27,7 @@ SPOTIPY_CLIENT_ID = 'c630433b292d477990ebb8dcc283b8f5'
 SPOTIPY_CLIENT_SECRET = 'a96c46ec319a4e878d3ac80058301041'
 sp = spotipy.Spotify(client_credentials_manager=spotipy.SpotifyClientCredentials(client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET))
 
+color = 0xFF5F00
 
 currentSongs = {} # Will store current song playing in each server - {server.id: song}
 try:
@@ -38,15 +39,18 @@ intents = nextcord.Intents.all()
 
 if (computerName == "IBRAPC"): # If the code is running on my computer, do not run the main bot - run the dev bot
     tMusic = commands.Bot(intents = intents, command_prefix = 'd', activity = nextcord.Activity(type=nextcord.ActivityType.listening, name="TechMaster complain about my code"))
+    color = 0x00a0ff
 else:
     tMusic = commands.Bot(intents = intents, command_prefix = 't', activity = nextcord.Activity(type=nextcord.ActivityType.watching, name="Myself get beta tested"))
-
+    color = 0xFF5F00
 tMusic.remove_command('help') # Remove the help command
 
 
 async def downloadSpotify(ctx, playlist):
     """
     Method which downloads a spotify playlist and adds it to the queue
+    :param ctx: The context of the command
+    :param playlist: The playlist to download
     """
     song = currentSongs[ctx.message.guild.id]
     while (song.nextSong):
@@ -68,6 +72,8 @@ async def downloadSpotify(ctx, playlist):
 async def downloadDeezer(ctx, playlist):
     """
     Method which downloads a deezer playlist and adds it to the queue
+    :param ctx: The context of the command
+    :param playlist: The playlist to download
     """
     song = currentSongs[ctx.message.guild.id]
     while (song.nextSong):
@@ -90,6 +96,7 @@ def inSameVC(ctx):
     """
     Method which checks if the user is in the same voice channel as the bot
     This is used to prevent random people from messing with the bot while it's playing music
+    :param ctx: The context of the command
     """
     return ctx.author.voice and ctx.author.voice.channel.id == ctx.voice_client.channel.id
 
@@ -98,6 +105,7 @@ async def getVideoTitle(youtubeLink):
     Method which uses ytdl to get the title of a youtube video, and returns it
     Legacy Code: Likely will not be rewritten to support tCodeV2 standards
     Feature wasn't really used in the end, but I'm keeping it here in case it's needed in the future
+    :param youtubeLink: The link to the youtube video
     """
     ydl = youtube_dl.YoutubeDL({})
     video = ydl.extract_info(youtubeLink, download=False)
@@ -119,6 +127,8 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
     Method which can take either a URL or a song name and download the track from it's respective platform (youtube, soundcloud, spotify)
     Legacy Code: Likely will not be rewritten to support tCodeV2 standards
     This method is very annoying to rewrite, and in its current state it works fine but is not very efficient
+    :param songName: The name of the song to download. Could be a URL or a song name
+    :param ctx: The context of the command
     """
     if(str(songName).startswith("https")):
         #check if its spotify or deezer link
@@ -208,11 +218,11 @@ async def setARL(ctx, arl):
             f.write(arl)
         await ctx.send("ARL Updated")
         return
-    await ctx.send("You do not have permission to use this command. Only DaddyTMI can :pleading_face:")
+    await ctx.send("You do not have permission to use this command. Only my owner can :pleading_face:")
 
 @tMusic.event
 async def on_guild_join(guild):
-    embed=nextcord.embeds.Embed(title=":notes: Welcome to tMusic", description="Hi :wave:! Thank you for inviting me to your server! Use tPlay to get started!", color=0xFF5F00) 
+    embed=nextcord.embeds.Embed(title=":notes: Welcome to tMusic", description="Hi :wave:! Thank you for inviting me to your server! Use tPlay to get started!", color=color) 
     embed.add_field(name="Important Note:", value="Some users may experience degraded audio quality when setting tMusic's user volume to 100. For optimal results, we reccomend setting tMusic's user volume to ~80%", inline=False)
     embed.set_footer(text="Hint: Use the command `tHelp` to see a list of commands")
     channel = guild.system_channel
@@ -248,7 +258,7 @@ async def delete(ctx, amount: int):
 @tMusic.command(pass_context = True, aliases=['Help', 'help', "HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
 async def commands(ctx, command: str = None):
     if (not command):
-        embed=nextcord.embeds.Embed(color=0xFF5F00)
+        embed=nextcord.embeds.Embed(color=color)
         embed.title=":information_source: About tMusic"
         embed.description = "tMusic is the BEST Discord Music bot, supporting music from more sources than the competition! Here are the commands for tMusic:"
         embed.add_field(name="tPlay", value="Used to play and add songs to the queue")
@@ -262,7 +272,7 @@ async def commands(ctx, command: str = None):
         return
     command = command.lower()
     if (command == "tplay"):
-        embed = nextcord.embeds.Embed(title = "About tPlay", description="tPlay is the main command utilized witih tMusic" ,color=0xFF5F00)
+        embed = nextcord.embeds.Embed(title = "About tPlay", description="tPlay is the main command utilized witih tMusic" ,color=color)
         embed.add_field(name="Description", value="Used to play and add songs to the queue", inline = True)
         embed.add_field(name="Usage", value="tPlay <song>", inline = True)
         embed.add_field(name="Supported <song> formats", value="tMusic supports a wide array of sources for your music. tMusic supports Spotify links, Deezer links, YouTube links, SoundCloud links, Search Queries, Spotify Playlists, Deezer Playlists, and attached files", inline = True)
@@ -271,7 +281,7 @@ async def commands(ctx, command: str = None):
         await ctx.send(embed=embed)
         return
     if (command == "tloop"):
-        embed = nextcord.embeds.Embed(title = "About tLoop", description="tLoop is an integral part of tMusic's experience" ,color=0xFF5F00)
+        embed = nextcord.embeds.Embed(title = "About tLoop", description="tLoop is an integral part of tMusic's experience" ,color=color)
         embed.add_field(name="Description", value="Used to loop the currently playing song, or the current queue", inline = True)
         embed.add_field(name="Usage", value="tLoop <optional argument>", inline = True)
         embed.add_field(name="Supported <optional argument> formats", value="By default, leaving the argument blank loops the currently playing song. However, by adding the 'queue' keyword after tLoop, tMusic will instead enable queue looping" , inline = True)
@@ -279,35 +289,35 @@ async def commands(ctx, command: str = None):
         await ctx.send(embed=embed)
         return
     if (command == "tqueue"):
-        embed = nextcord.embeds.Embed(title = "About tQueue", description="tQueue is an integral part of tMusic's experience" ,color=0xFF5F00)
+        embed = nextcord.embeds.Embed(title = "About tQueue", description="tQueue is an integral part of tMusic's experience" ,color=color)
         embed.add_field(name="Description", value="Used to view the upcoming queue of songs", inline = True)
         embed.add_field(name="Usage", value="tQueue", inline = True)
         embed.add_field(name="Example", value="`tQueue`", inline = True)
         await ctx.send(embed=embed)
         return
     if (command == "tsong"):
-        embed = nextcord.embeds.Embed(title = "About tSong", description="tSong is a unique yet important part of tMusic" ,color=0xFF5F00)
+        embed = nextcord.embeds.Embed(title = "About tSong", description="tSong is a unique yet important part of tMusic" ,color=color)
         embed.add_field(name="Description", value="Used to view the currently playing song", inline = True)
         embed.add_field(name="Usage", value="tSong", inline = True)
         embed.add_field(name="Example", value="`tSong`", inline = True)
         await ctx.send(embed=embed)
         return
     if (command == "tpause"):
-        embed=nextcord.embeds.Embed(title = "About tPause", description="tPause is an important part of tMusic's functionality" ,color=0xFF5F00)
+        embed=nextcord.embeds.Embed(title = "About tPause", description="tPause is an important part of tMusic's functionality" ,color=color)
         embed.add_field(name="Description", value="Used to pause the currently playing song", inline = True)
         embed.add_field(name="Usage", value="tPause", inline = True)
         embed.add_field(name="Example", value="`tPause`", inline = True)
         await ctx.send(embed=embed)
         return
     if (command == "tresume"):
-        embed = nextcord.embeds.Embed(title = "About tResume", description="tResume is an important part of tMusic's functionality" ,color=0xFF5F00)
+        embed = nextcord.embeds.Embed(title = "About tResume", description="tResume is an important part of tMusic's functionality" ,color=color)
         embed.add_field(name="Description", value="Used to resume a currently playing song", inline = True)
         embed.add_field(name="Usage", value="tResume", inline = True)
         embed.add_field(name="Example", value="`tResume`", inline = True)
         await ctx.send(embed=embed)
         return
     if (command == "tskip"):
-        embed = nextcord.embeds.Embed(title = "About tSkip", description="tSkip is an important part of tMusic's functionality" ,color=0xFF5F00)
+        embed = nextcord.embeds.Embed(title = "About tSkip", description="tSkip is an important part of tMusic's functionality" ,color=color)
         embed.add_field(name="Description", value="Used to skip songs in queue", inline = True)
         embed.add_field(name="Usage", value="tSkip <optional argument>", inline = True)
         embed.add_field(name="Supported <optional argument> formats", value="By default, leaving the argument blank skips the currently playing song. However, by adding the a number after tSkip, tMusic will instead skip that amount of songs in queue" , inline = True)
@@ -341,7 +351,7 @@ async def loop(ctx, type: str = None):
             if (song == song.nextSong or song.nextSong == currentSongs[ctx.message.guild.id]): #If looping is enabled, break the loop since this could go on forever. 
                 break
         song.nextSong = currentSongs[ctx.message.guild.id]
-        await ctx.reply(embed = nextcord.embeds.Embed(title = "Looping queue", description = "Looping the queue. If you would like to disable queue looping, add another song to the queue, or clear the queue", color=0xFF5F00))
+        await ctx.reply(embed = nextcord.embeds.Embed(title = "Looping queue", description = "Looping the queue. If you would like to disable queue looping, add another song to the queue, or clear the queue", color=color))
         return
     await ctx.reply(embed = nextcord.embeds.Embed(title = "Invalid loop type", description = "Valid loop types are: song, queue", color=0xff000))
 @tMusic.command(pass_context=True)
@@ -363,7 +373,7 @@ def checkQueue(ctx, firstSong: bool):
     if (not currentSongs[ctx.message.guild.id].nextSong == None and voice):
         player = voice.play(currentSongs[ctx.message.guild.id].nextSong.getAudio(), after=lambda x=None: (checkQueue(ctx, False)))            
         currentSongs[ctx.message.guild.id] = currentSongs[ctx.message.guild.id].nextSong
-        embed = nextcord.embeds.Embed(title=":notes: Now Playing", description="{0}".format(currentSongs[ctx.message.guild.id].getSongName()), color=0xFF5F00)
+        embed = nextcord.embeds.Embed(title=":notes: Now Playing", description="{0}".format(currentSongs[ctx.message.guild.id].getSongName()), color=color)
         file = currentSongs[ctx.message.guild.id].getAlbumArt()
         embed.set_thumbnail(url="attachment://albumArt.jpg")
         channel = tMusic.get_channel(ctx.channel.id)
@@ -506,14 +516,14 @@ async def play(ctx, *, song: str = None):
                 if (song == song.nextSong or song.nextSong == currentSongs[ctx.message.guild.id]): #If looping is enabled, break the loop since this could go on forever. 
                     break
             song.nextSong = DonwloadedSong(songName, ctx.message.guild.id)
-            embed = nextcord.embeds.Embed(title=":notepad_spiral: Added to Queue", description=songName, color= 0xFF5F00)
+            embed = nextcord.embeds.Embed(title=":notepad_spiral: Added to Queue", description=songName, color= color)
             file = song.nextSong.getAlbumArt()
             embed.set_thumbnail(url="attachment://albumArt.jpg")
             await message.delete()
             await ctx.send(file = file, embed=embed)
             return
         currentSongs[ctx.message.guild.id] = DonwloadedSong(songName, ctx.message.guild.id)
-        embed = nextcord.embeds.Embed(title=":notes: Now Playing", description=songName, color=0xFF5F00)
+        embed = nextcord.embeds.Embed(title=":notes: Now Playing", description=songName, color=color)
         file = currentSongs[ctx.message.guild.id].getAlbumArt()
         embed.set_thumbnail(url="attachment://albumArt.jpg")
         await message.delete()
@@ -547,7 +557,7 @@ async def pause(ctx):
             await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="You must be in the same voice channel as me to use this command", color=0xff0000))
             return
         voice.pause()
-        await ctx.reply(embed = nextcord.embeds.Embed(title=":pause_button: Paused", description=currentSongs[ctx.message.guild.id].getSongName(), color=0xFF5F00))
+        await ctx.reply(embed = nextcord.embeds.Embed(title=":pause_button: Paused", description=currentSongs[ctx.message.guild.id].getSongName(), color=color))
         return
     await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="There is nothing playing", color=0xff0000))
 @tMusic.command(pass_context=True, aliases=['Leave', 'fuckOff', 'fuckoff', 'gtfo', 'Fuckoff', 'Gtfo'])
@@ -563,7 +573,7 @@ async def leave(ctx):
         await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="You must be in the same voice channel as me to use this command", color=0xff0000))
         return
     await voice.disconnect()
-    await ctx.reply(embed = nextcord.embeds.Embed(title=":wave: Left Voice Channel", description="Goodbye!", color=0xFF5F00))
+    await ctx.reply(embed = nextcord.embeds.Embed(title=":wave: Left Voice Channel", description="Goodbye!", color=color))
     currentSongs[ctx.message.guild.id] = None
     try:
         shutil.rmtree(str(ctx.message.guild.id))
@@ -579,7 +589,7 @@ async def queue(ctx):
         await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="There is nothing in the queue", color=0xff0000))
         return
     song = currentSongs[ctx.message.guild.id]
-    embed = nextcord.embeds.Embed(title=":notepad_spiral: Queue", description="", color=0xFF5F00)
+    embed = nextcord.embeds.Embed(title=":notepad_spiral: Queue", description="", color=color)
     i = 1
     while (song != None):
         embed.add_field(name = str(i), value=song.getSongName(), inline=False)
@@ -593,7 +603,7 @@ async def queue(ctx):
 async def song(ctx):
     song = currentSongs[ctx.message.guild.id]
     file = song.getAlbumArt()
-    await ctx.send(file = file, embed = nextcord.embeds.Embed(title=":notes: Now Playing", description=song.getSongName(), color=0xFF5F00))
+    await ctx.send(file = file, embed = nextcord.embeds.Embed(title=":notes: Now Playing", description=song.getSongName(), color=color))
 
 @tMusic.command(pass_context=True, aliases=['Skip', 'next', 'Next'])
 async def skip(ctx, amount = 1):
@@ -614,7 +624,7 @@ async def skip(ctx, amount = 1):
     if (not currentSongs[ctx.message.guild.id].nextSong):
         await ctx.reply(embed=nextcord.embeds.Embed(title=":x: Error", description="There is nothing in the queue. Try tPause instead", color=0xff0000))
         return
-    embed = nextcord.embeds.Embed(title=":fast_forward: Skipped", description="{0}".format(currentSongs[ctx.message.guild.id].getSongName()), color=0xFF5F00)
+    embed = nextcord.embeds.Embed(title=":fast_forward: Skipped", description="{0}".format(currentSongs[ctx.message.guild.id].getSongName()), color=color)
     await ctx.send(embed=embed)
     song = currentSongs[ctx.message.guild.id]
     for i in range (0, amount):
@@ -624,10 +634,10 @@ async def skip(ctx, amount = 1):
 
 @tMusic.event
 async def on_message(message):
-    if tMusic.user.mentioned_in(message):
-        await message.reply(embed=nextcord.embeds.Embed(title=":notes: Hi! I'm tMusic!", description="Use tPlay to get started, or tHelp to view a list of my commands!", color=0xFF5F00))
-    else:
-        await tMusic.process_commands(message)
+    if tMusic.user.mention in message.content:
+        await message.reply(embed=nextcord.embeds.Embed(title=":notes: Hi! I'm tMusic!", description="Use tPlay to get started, or tHelp to view a list of my commands!", color=color))
+        return
+    await tMusic.process_commands(message)
 # Running the bot
 if (computerName == "IBRAPC"): # If the code is running on my computer, do not run the main bot - run the dev bot
     tMusic.run(os.getenv('tMusicDevToken')) #Dev Token
