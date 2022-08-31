@@ -52,7 +52,6 @@ color = 0xFF5F00
 #load file from config/.sp_dc
 file = open("config/.sp_dc", "r")
 data = file.readline()
-client = Spotify(data)
 
 currentSongs = {} # Will store current song playing in each server - {server.id: song}
 try:
@@ -70,6 +69,8 @@ else:
     color = 0xFF5F00
 #Remove help command
 tMusic.remove_command('help')
+
+global client
 
 async def downloadSpotify(ctx, playlist):
     """
@@ -244,6 +245,20 @@ async def setARL(ctx, arl):
         await ctx.send("ARL Updated")
         return
     await ctx.send("You do not have permission to use this command. Only my owner can :pleading_face:")
+@tMusic.command(pass_context=True)
+async def setSPDC(ctx, arl):
+    """
+    Command which updates the .sp_dc file in the config directory
+    """
+    #check if it's techmaster or not
+    if (ctx.message.author.id == 516413751155621899):
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "config", ".sp_dc"), "w") as f:
+            f.write(arl)
+        await ctx.send("SPDC Updated")
+        global client
+        client = Spotify(arl)
+        return
+    await ctx.send("You do not have permission to use this command. Only my owner can :pleading_face:")
 
 @tMusic.event
 async def on_guild_join(guild):
@@ -273,6 +288,14 @@ async def on_ready():
     """
     print("Logged in as " + tMusic.user.name)
     print("tMusic is ready to go!")
+    global client
+    try:
+        client = Spotify(data)
+    except:
+        # If we're here then the SPDC has expired - send message to techmaster04
+        channel = tMusic.get_channel(1010952626185179206)
+        user = tMusic.get_user(516413751155621899)
+        tMusic.loop.create_task(channel.send(user.mention + " My Spotify token has expired. Please update it!"))
 
 @tMusic.command(pass_context=True)
 async def delete(ctx, amount: int):
