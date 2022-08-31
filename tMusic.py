@@ -6,7 +6,6 @@
 
 from ast import alias
 import asyncio
-from asyncio.windows_events import CONNECT_PIPE_INIT_DELAY
 from cgitb import text
 from pickletools import read_unicodestring1
 import string
