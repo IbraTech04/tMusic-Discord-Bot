@@ -679,12 +679,12 @@ async def leave(ctx):
         pass
 
 @tMusic.command(pass_context = True, aliases=['Search', 'advancedPlay'])
-async def search(ctx, limit:int = 5, *, query:string):
+async def search(ctx, limit, *, query):
     #use deezer API; search for query
     await ctx.send("Searching for {}".format(query))
     results = requests.get("https://api.deezer.com/search?q=" + query + "&limit=" + str(limit))
     results = results.json()
-    embed=nextcord.embeds.Embed(title="Search Results:", description="For query " + query, color=0xff004c)
+    embed=nextcord.embeds.Embed(title="Search Results:", description="For query " + query, color=color)
     for i in range (len(results['data'])):
         embed.add_field(name=str(i + 1) + ". " + results['data'][i]['title_short'], value=results['data'][i]['artist']['name'], inline=False)
     await ctx.send(embed=embed)
@@ -715,7 +715,7 @@ async def lyrics(ctx):
         return
     id = (results['hits'][0]['result']['api_path'].split('/')[-1])
     embed = nextcord.embeds.Embed(title = "Lyrics for " + currentSongs[ctx.message.guild.id].getSongName(), description = genius.lyrics(id), color = color)
-    embed.set_footer("Lyrics provided by Genius.com")
+    embed.set_footer(text = "Lyrics provided by Genius.com")
     await ctx.send(embed = embed)
 
 async def sanitize_track_data(track_data: dict):
@@ -868,7 +868,7 @@ def secsToMins(secs):
         secs = "0" + str(secs)
     return str(mins) + ":" + str(secs)
 
-@tMusic.command(pass_context=True, aliases=['currentSong', 'CurrentSong', 'whatsPlaying', 'WhatsPlaying', 'nowPlaying', 'NowPlaying'])
+@tMusic.command(pass_context=True, aliases=['currentSong', 'CurrentSong', 'whatsPlaying', 'WhatsPlaying', 'nowPlaying', 'NowPlaying', 'nowplaying'])
 async def song(ctx):
     song = currentSongs[ctx.message.guild.id]
     file = song.getAlbumArt()
