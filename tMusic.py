@@ -6,7 +6,10 @@
 
 from ast import alias
 import asyncio
+from asyncio.windows_events import CONNECT_PIPE_INIT_DELAY
 from cgitb import text
+from pickletools import read_unicodestring1
+import string
 import time
 import shutil
 from telnetlib import TM
@@ -25,6 +28,18 @@ from bs4 import BeautifulSoup
 from Errors import *
 from song import *
 from lyricsgenius import Genius
+import pylrc
+
+import json
+import os
+import re
+
+from tqdm import tqdm
+
+from api import Spotify
+from cli import parse_cmd
+from tinytag import TinyTag
+
 SPOTIPY_CLIENT_ID = 'c630433b292d477990ebb8dcc283b8f5'
 SPOTIPY_CLIENT_SECRET = 'a96c46ec319a4e878d3ac80058301041'
 sp = spotipy.Spotify(client_credentials_manager=spotipy.SpotifyClientCredentials(client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET))
@@ -34,6 +49,10 @@ GENIUS_SECRET = 'blXkhbM_tgAVin1Cq_nFUljGk2EFvBlG-rWvAutqGHc1w4QwdyZZV9evlrQTaWp
 GENIUS_TOKEN = 'sorYarHPpZGFsmSPDipAnaPxjicRCAGaX01rmHgGwDME1Fjv-EujD56xlL44T0ap'
 genius = Genius(GENIUS_TOKEN)
 color = 0xFF5F00
+#load file from config/.sp_dc
+file = open("config/.sp_dc", "r")
+data = file.readline()
+client = Spotify(data)
 
 currentSongs = {} # Will store current song playing in each server - {server.id: song}
 try:
@@ -49,7 +68,8 @@ if (computerName == "IBRAPC"): # If the code is running on my computer, do not r
 else:
     tMusic = commands.Bot(intents = intents, command_prefix = 't', activity = nextcord.Activity(type=nextcord.ActivityType.watching, name="Myself get beta tested"))
     color = 0xFF5F00
-
+#Remove help command
+tMusic.remove_command('help')
 
 async def downloadSpotify(ctx, playlist):
     """
@@ -260,13 +280,14 @@ async def delete(ctx, amount: int):
     if (ctx.message.author.id == 516413751155621899):
         #delete the amount of messages specified
         await ctx.message.channel.purge(limit=amount + 1)
-@tMusic.command(pass_context = True, aliases=["HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
+@tMusic.command(pass_context = True, aliases=["help", "Help", "HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
 async def commands(ctx, command: str = None):
     if (not command):
         embed=nextcord.embeds.Embed(color=color)
         embed.title=":information_source: About tMusic"
         embed.description = "tMusic is the BEST Discord Music bot, supporting music from more sources than the competition! Here are the commands for tMusic:"
         embed.add_field(name="tPlay", value="Used to play and add songs to the queue")
+        embed.add_field(name="tSearch", value="Used to search for songs")
         embed.add_field(name="tLoop", value="Used to toggle the server-wide song/queue loop feature.")
         embed.add_field(name="tQueue", value="To view the song queue")
         embed.add_field(name="tSong", value="Used to view the currently playing song")
@@ -274,6 +295,8 @@ async def commands(ctx, command: str = None):
         embed.add_field(name="tSkip", value="Used to skip the currently playing song.", inline = True)
         embed.add_field(name="tLeave", value="Used to disconnect the bot from a voice channel", inline = True)
         embed.add_field(name="tRemove", value="Used to remove a certain index from the queue", inline = True)
+        embed.add_field(name="tLyrics", value="Used to view the lyrics of the currently playing song", inline = True)
+        embed.add_field(name="tSyncedLyrics", value="Used to view the currently-playing lyric", inline = True)
 
         embed.set_footer(text="Hint: Use tCommands followed by a command name to get more info about a specific command")
         await ctx.send(embed=embed)
@@ -286,6 +309,14 @@ async def commands(ctx, command: str = None):
         embed.add_field(name="Supported <song> formats", value="tMusic supports a wide array of sources for your music. tMusic supports Spotify links, Deezer links, YouTube links, SoundCloud links, Search Queries, Spotify Playlists, Deezer Playlists, and attached files", inline = True)
         embed.add_field(name="Example", value="`tPlay https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT?si=3d28f2ff6178489d`", inline = True)
         embed.add_field(name="Coming Soon" ,value="tMusic will soon support YouTube Playlists and mutliple attached files!", inline = True)     
+        await ctx.send(embed=embed)
+        return
+    if (command == "tsearch"):
+        embed = nextcord.embeds.Embed(title = "About tSearch", description="tSearch is a secondary tool used to play and add songs to the queue" ,color=color)
+        embed.add_field(name="Description", value="Used to search for songs. Instead of tMusic searching and automatically adding the first result, this feature allows you to select a song from list of search results", inline = True)
+        embed.add_field(name="Usage", value="tSearch <amountOfResults> <song>", inline = True)
+        embed.add_field(name="Supported Argument Values", value="<amountOfResults> Must be a number, while <song> can be whatever you desire", inline = True)
+        embed.add_field(name="Example", value="`tSearch 5 Never Gonna Give You Up`", inline = True)
         await ctx.send(embed=embed)
         return
     if (command == "tloop"):
@@ -338,13 +369,30 @@ async def commands(ctx, command: str = None):
         embed .add_field(name="Usage", value="tLeave", inline = True)
         embed .add_field(name="Example", value="`tLeave`", inline = True)
         await ctx.send(embed=embed)
+        return
     if (command == "tremove"):
         embed = nextcord.embeds.Embed(title = "About tRemove", description="tRemove is a nice convience feature built into tMusic" ,color=color)
         embed.add_field(name="Description", value="Used to remove a certain index from the queue", inline = True)
         embed.add_field(name="Usage", value="tRemove <index>", inline = True)
         embed.add_field(name="Supported <index> formats", value="By default, leaving the argument blank removes the next song. However, by adding the a number after tRemove, tMusic will instead remove that index from the queue. This command works well when paired with tQueue" , inline = True)
         embed.add_field(name="Example", value="`tRemove 2`", inline = True)
-        ctx.send(embed=embed)
+        await ctx.send(embed=embed)
+        return
+    if (command == "tlyrics"):
+        embed = nextcord.embeds.Embed(title = "About tLyrics", description="tLyrics is a nice convience feature built into tMusic" ,color=color)
+        embed.add_field(name="Description", value="Used to search for lyrics to a song. If lyrics are found in the song's tags, they are extracted. Otherwise lyrics from Genuis are used", inline = True)
+        embed.add_field(name="Usage", value="tLyrics", inline = True)
+        embed.add_field(name="Example", value="`tLyrics`", inline = True)
+        await ctx.send(embed=embed)
+        return
+    if (command == "tsyncedlyrics"):
+        embed = nextcord.embeds.Embed(title = "About tSyncedLyrics", description="tSyncedLyrics is a feature exclusive to tMusic" ,color=color)
+        embed.add_field(name="Description", value="Used to view the currently-playing lyric, with a 3 lyric buffer above and below", inline = True)
+        embed.add_field(name="Usage", value="tSyncedLyrics", inline = True)
+        embed.add_field(name="Example", value="`tSyncedLyrics`", inline = True)
+        embed.set_footer(text="Note: Not all tracks support this feature")
+        await ctx.send(embed=embed)
+        return
     await ctx.send(embed=nextcord.embeds.Embed(title = "Command not found", description="The command you entered was not found. Please check your spelling and try again", color=0xff0000).set_footer(text="Hint: Use tCommands to view a list of commands"))
 
 @tMusic.command(pass_context=True, aliases=['Loop', 'repeat', 'Repeat'])
@@ -393,6 +441,7 @@ def checkQueue(ctx, firstSong: bool):
         
         return
     if (not currentSongs[ctx.message.guild.id].nextSong == None and voice):
+        currentSongs[ctx.message.guild.id].nextSong.startTime = time.time()
         player = voice.play(currentSongs[ctx.message.guild.id].nextSong.getAudio(), after=lambda x=None: (checkQueue(ctx, False)))            
         embed = nextcord.embeds.Embed(title=":notes: Now Playing", description="{0}".format(currentSongs[ctx.message.guild.id].nextSong.getSongName()), color=color)
         file = currentSongs[ctx.message.guild.id].nextSong.getAlbumArt()
@@ -572,7 +621,7 @@ async def resume(ctx):
         return
     ctx.voice_client.resume()
     await ctx.send(embed = nextcord.embeds.Embed(title = ":play_pause: Resumed", description = "Resumed", color = 0x006400))
-
+    
 @tMusic.command(pass_context = True, aliases=['Pause', 'ununpause', "Ununpause", "UnUnpause"]) #Pause the current song
 async def pause(ctx):
     voice = nextcord.utils.get(tMusic.voice_clients,guild=ctx.guild) #Getting the voice client - this will tell us if tMusic is connected to a voice channel or not
@@ -607,8 +656,8 @@ async def leave(ctx):
     except OSError as e:
         pass
 
-@tMusic.command(pass_context = True)
-async def search(ctx, limit = 5, *, query):
+@tMusic.command(pass_context = True, aliases=['Search', 'advancedPlay'])
+async def search(ctx, limit:int = 5, *, query:string):
     #use deezer API; search for query
     await ctx.send("Searching for {}".format(query))
     results = requests.get("https://api.deezer.com/search?q=" + query + "&limit=" + str(limit))
@@ -624,7 +673,7 @@ async def search(ctx, limit = 5, *, query):
         await ctx.invoke(tMusic.get_command('play'), song = results['data'][int(song.content) - 1]['link'])
     except:
         await ctx.send("tMusic timed out waiting for input")
-    
+
 @tMusic.command(pass_context=True, aliases=['l', 'Lyrics'])
 async def lyrics(ctx):
     #check if the song has lyrics
@@ -647,13 +696,99 @@ async def lyrics(ctx):
     embed.set_footer("Lyrics provided by Genius.com")
     await ctx.send(embed = embed)
 
+async def sanitize_track_data(track_data: dict):
+    album_data = track_data['album']
+    artist_data = track_data['artists']
+    del track_data['album']
+    del track_data['artists']
+    track_data['album_name'] = album_data['name']
+    track_data['release_date'] = album_data['release_date']
+    track_data['total_tracks'] = str(album_data['total_tracks']).zfill(2)
+    track_data['track_number'] = str(track_data['track_number']).zfill(2)
+    track_data['album_artist'] = ','.join(
+        [artist['name'] for artist in album_data['artists']])
+    track_data['artist'] = ','.join([artist['name'] for artist in artist_data])
+
+async def save_lyrics(lyrics, path):
+    with open(path, "w+", encoding='utf-8') as f:
+        f.write(lyrics)
+
+async def format_lrc(lyrics_json):
+    lyrics = lyrics_json['lyrics']['lines']
+    if (lyrics_json['lyrics']['syncType'] == 'UNSYNCED'):
+        raise NoSyncedLyricsException("No synced lyrics found for this song")
+    else:
+        lrc = []
+        for lines in lyrics:
+            duration = int(lines['startTimeMs'])
+            minutes, seconds = divmod(duration / 1000, 60)
+            lrc.append(f'[{minutes:0>2.0f}:{seconds:.3f}] {lines["words"]}')
+    return '\n'.join(lrc)
+
+async def download_lyrics(track, fileName):
+    unable = []
+    await sanitize_track_data(track)
+    lyrics_json = client.get_lyrics(track['id'])
+    if not lyrics_json:
+        unable.append(track)
+    await save_lyrics(await format_lrc(lyrics_json), path=fileName)
+
+
+@tMusic.command(pass_context=True, aliases=['SyncedLyrics', 'syncedlyrics', 'sl'])
+async def syncedLyrics(ctx):
+    #In order for this to work, the song must have a .lrc file 
+    #but before taht we need to check if a file is playing
+    if (currentSongs[ctx.message.guild.id] == None):
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "There is nothing playing", color = 0xFF0000))
+        return
+    songName = currentSongs[ctx.message.guild.id].getSongName()
+    #check if songName.lrc file exists
+    if (not os.path.isfile(str(ctx.message.guild.id) + "/" + songName + ".lrc")):
+        #search for song on spotify 
+        song = sp.search(q=songName, type='track')
+        if (len(song['tracks']['items']) == 0):
+            await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "Unfortunately this song does not have synced lyrics. You can try `tLyrics` instead", color = 0xFF0000))
+            return
+        #if we're here, we can use syrics to get the lyrics
+        try:
+            await download_lyrics(song['tracks']['items'][0], str(ctx.message.guild.id) + "/" + songName + ".lrc")
+        except Exception as e:
+            await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "Unfortunately this song does not have synced lyrics. You can try `tLyrics` instead", color = 0xFF0000))
+            return
+    #If we're here, we can get the lyrics
+    file = open(str(ctx.message.guild.id) + "/" + songName + ".lrc", "r")
+    string = ''.join(file.readlines())
+    file.close
+
+    subs = pylrc.parse(string)
+    times = []
+    for sub in subs:
+        times.append(sub.time)
+    #find the lyric closest to a given time
+    songPlayTime = time.time() - currentSongs[ctx.message.guild.id].getStartTime()
+    closest = (min(times, key=lambda x:abs(x-songPlayTime)))
+    index = times.index(closest)
+    startIndex = index - 2
+    if (startIndex < 0):
+        startIndex = 0
+    endIndex = index + 5
+    if (endIndex > len(times)):
+        endIndex = len(times)
+    toSend = ""
+    for i in range (startIndex, endIndex):
+        if (i == index):
+            toSend += "**" + subs[i].text + "**" + "\n"
+            continue
+        toSend += subs[i].text + "\n"
+    embed = nextcord.embeds.Embed(title = "Synced Lyrics for " + currentSongs[ctx.message.guild.id].getSongName(), description = toSend, color = color)
+    await ctx.send(embed = embed)
 
 @tMusic.command(pass_context=True, aliases=['RickRoll', 'RickRolled', 'rickrolled', 'Rickrolled'])
 async def rickRoll(ctx):
     """
     TODO: implement rickRoll command
     """
-    await ctx.send("This command is not yet implemented")
+    await ctx.reply("This command is not yet implemented")
 
 @tMusic.command(pass_context=True, aliases=['rem', 'del', 'Rem'])
 async def remove(ctx, index: int = 1):

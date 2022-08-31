@@ -5,3 +5,7 @@ scdl
 bs4
 deemix
 eyed3
+lyricsgenius
+pylrc
+tinytag==1.8.1
+tqdm==4.64.0
