@@ -2,12 +2,13 @@ import nextcord
 from nextcord import FFmpegOpusAudio
 import os
 import eyed3
+
 class DonwloadedSong():
-    def __init__(self, songName, guildID) -> None:
+    def __init__(self, songName, guildID, startTime, requester) -> None:
         self.songName = songName
         self.guildID = guildID
         self.nextSong = None # This is for a linked list
-        
+        self.startTime = startTime
         #---- This is for album art extraction ----#
         
         eyed = eyed3.load(os.path.join(str(self.guildID), self.songName + ".mp3"))
@@ -19,6 +20,16 @@ class DonwloadedSong():
             self.albumArt = os.path.join(str(self.guildID), songName + ".png")
         else:
             self.albumArt = "defaultAlbumArt.png"
+        
+        # Get total duration of the song
+        self.songDuration = eyed.info.time_secs
+        self.requester = requester
+        
+        #check if song has lyrics tag
+        if eyed.tag.lyrics:
+            self.lyrics = u"".join([i.text + "\n" for i in eyed.tag.lyrics])
+        else:
+            self.lyrics = None
         
         """
         Instead of using the deezer API to search for the song and locate it's album art, we can use the eyed3 library to extract the album art from the song directly. That way, we have a unified way to extract album art from any song; Whether it be through deemix, scdl, or an uploaded track on discord.
@@ -36,3 +47,13 @@ class DonwloadedSong():
         file = nextcord.File(self.albumArt, filename='albumArt.jpg') #Since the album art is extracted from the song, we cannot return the album art directly
         # We must return a discord.File object, which is a file that can be sent to discord
         return file
+    def getRequester(self):
+        return self.requester
+    def getStartTime(self):
+        return self.startTime
+    def getDuration(self):
+        return self.songDuration
+    def hasLyrics(self):
+        return self.lyrics != None
+    def getLyrics(self):
+        return self.lyrics

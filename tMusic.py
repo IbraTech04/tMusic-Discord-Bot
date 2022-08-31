@@ -7,6 +7,7 @@
 from ast import alias
 import asyncio
 from cgitb import text
+import time
 import shutil
 from telnetlib import TM
 import threading
@@ -23,10 +24,15 @@ import youtube_dl
 from bs4 import BeautifulSoup
 from Errors import *
 from song import *
+from lyricsgenius import Genius
 SPOTIPY_CLIENT_ID = 'c630433b292d477990ebb8dcc283b8f5'
 SPOTIPY_CLIENT_SECRET = 'a96c46ec319a4e878d3ac80058301041'
 sp = spotipy.Spotify(client_credentials_manager=spotipy.SpotifyClientCredentials(client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET))
 
+GENUIS_CLIENT_ID = 'Chx7q6AqZyjgCRkmV52NK4zkqO4KiKQF5qaLI4C_UhIs-Zf7HK9_q3yEpVjcwTEz'
+GENIUS_SECRET = 'blXkhbM_tgAVin1Cq_nFUljGk2EFvBlG-rWvAutqGHc1w4QwdyZZV9evlrQTaWpPU69L7BUrCKzyOC3xYceEqQ'
+GENIUS_TOKEN = 'sorYarHPpZGFsmSPDipAnaPxjicRCAGaX01rmHgGwDME1Fjv-EujD56xlL44T0ap'
+genius = Genius(GENIUS_TOKEN)
 color = 0xFF5F00
 
 currentSongs = {} # Will store current song playing in each server - {server.id: song}
@@ -43,7 +49,6 @@ if (computerName == "IBRAPC"): # If the code is running on my computer, do not r
 else:
     tMusic = commands.Bot(intents = intents, command_prefix = 't', activity = nextcord.Activity(type=nextcord.ActivityType.watching, name="Myself get beta tested"))
     color = 0xFF5F00
-tMusic.remove_command('help') # Remove the help command
 
 
 async def downloadSpotify(ctx, playlist):
@@ -64,7 +69,7 @@ async def downloadSpotify(ctx, playlist):
         try:
         #download the song 
             songName = await downloadSong(playlist['tracks']['items'][i]['track']['external_urls']['spotify'], ctx)
-            song.nextSong = DonwloadedSong(songName, ctx.message.guild.id)
+            song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), time.time(), str(ctx.message.author))
             song = song.nextSong
         except:
             pass
@@ -87,7 +92,7 @@ async def downloadDeezer(ctx, playlist):
         try:
         #download the song 
             songName = await downloadSong(playlist["tracks"]["data"][i]["link"], ctx)
-            song.nextSong = DonwloadedSong(songName, ctx.message.guild.id)
+            song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), time.time(), str(ctx.message.author))
             song = song.nextSong
         except:
             pass
@@ -189,8 +194,8 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
             raise ARLException("ARL Error")
         
         #stdout, stderr = await proc.communicate(timeout=10) 
-        return stdout.decode().splitlines()[4].split(':')[0].split(']')[1].lstrip().rstrip()
-    
+        return stdout.decode().splitlines()[-3].split(str(os.sep))[1][:-4]
+
     else:
         #download song iwth scdl   
         proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
@@ -255,7 +260,7 @@ async def delete(ctx, amount: int):
     if (ctx.message.author.id == 516413751155621899):
         #delete the amount of messages specified
         await ctx.message.channel.purge(limit=amount + 1)
-@tMusic.command(pass_context = True, aliases=['Help', 'help', "HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
+@tMusic.command(pass_context = True, aliases=["HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
 async def commands(ctx, command: str = None):
     if (not command):
         embed=nextcord.embeds.Embed(color=color)
@@ -267,6 +272,9 @@ async def commands(ctx, command: str = None):
         embed.add_field(name="tSong", value="Used to view the currently playing song")
         embed.add_field(name="tPause and tResume", value="To pause and resume the currently playing song", inline = True)
         embed.add_field(name="tSkip", value="Used to skip the currently playing song.", inline = True)
+        embed.add_field(name="tLeave", value="Used to disconnect the bot from a voice channel", inline = True)
+        embed.add_field(name="tRemove", value="Used to remove a certain index from the queue", inline = True)
+
         embed.set_footer(text="Hint: Use tCommands followed by a command name to get more info about a specific command")
         await ctx.send(embed=embed)
         return
@@ -324,6 +332,19 @@ async def commands(ctx, command: str = None):
         embed.add_field(name="Example", value="`tSkip 2`", inline = True)
         await ctx.send(embed=embed)
         return
+    if (command == "tleave"):
+        embed = nextcord.embeds.Embed(title = "About tLeave", description="tLeave is an important part of tMusic's functionality" ,color=color)
+        embed.add_field(name="Description", value="Used to disconnect the bot from a voice channel", inline = True)
+        embed .add_field(name="Usage", value="tLeave", inline = True)
+        embed .add_field(name="Example", value="`tLeave`", inline = True)
+        await ctx.send(embed=embed)
+    if (command == "tremove"):
+        embed = nextcord.embeds.Embed(title = "About tRemove", description="tRemove is a nice convience feature built into tMusic" ,color=color)
+        embed.add_field(name="Description", value="Used to remove a certain index from the queue", inline = True)
+        embed.add_field(name="Usage", value="tRemove <index>", inline = True)
+        embed.add_field(name="Supported <index> formats", value="By default, leaving the argument blank removes the next song. However, by adding the a number after tRemove, tMusic will instead remove that index from the queue. This command works well when paired with tQueue" , inline = True)
+        embed.add_field(name="Example", value="`tRemove 2`", inline = True)
+        ctx.send(embed=embed)
     await ctx.send(embed=nextcord.embeds.Embed(title = "Command not found", description="The command you entered was not found. Please check your spelling and try again", color=0xff0000).set_footer(text="Hint: Use tCommands to view a list of commands"))
 
 @tMusic.command(pass_context=True, aliases=['Loop', 'repeat', 'Repeat'])
@@ -342,7 +363,7 @@ async def loop(ctx, type: str = None):
         return
     if (type == None or type.lower() == "song"):
         currentSongs[ctx.message.guild.id].nextSong = currentSongs[ctx.message.guild.id]
-        await ctx.reply(embed=nextcord.embeds.Embed(title="Looping current song", description="Looping the track which is currently playing. To disable looping, add another song to the queue", color = 0x00008b))
+        await ctx.reply(embed=nextcord.embeds.Embed(title="Looping current song", description="Looping the track which is currently playing. To disable looping, add another song to the queue", color = color))
         return
     if (type.lower() == "queue"):
         song = currentSongs[ctx.message.guild.id]
@@ -369,16 +390,19 @@ def checkQueue(ctx, firstSong: bool):
     voice = ctx.guild.voice_client
     if (firstSong):
         player = voice.play(currentSongs[ctx.message.guild.id].getAudio(), after=lambda x=None: (checkQueue(ctx, False)))
+        
         return
     if (not currentSongs[ctx.message.guild.id].nextSong == None and voice):
         player = voice.play(currentSongs[ctx.message.guild.id].nextSong.getAudio(), after=lambda x=None: (checkQueue(ctx, False)))            
-        currentSongs[ctx.message.guild.id] = currentSongs[ctx.message.guild.id].nextSong
-        embed = nextcord.embeds.Embed(title=":notes: Now Playing", description="{0}".format(currentSongs[ctx.message.guild.id].getSongName()), color=color)
-        file = currentSongs[ctx.message.guild.id].getAlbumArt()
+        embed = nextcord.embeds.Embed(title=":notes: Now Playing", description="{0}".format(currentSongs[ctx.message.guild.id].nextSong.getSongName()), color=color)
+        file = currentSongs[ctx.message.guild.id].nextSong.getAlbumArt()
         embed.set_thumbnail(url="attachment://albumArt.jpg")
+        embed.set_footer(text="Requested by {0}".format(currentSongs[ctx.message.guild.id].nextSong.getRequester()))
         channel = tMusic.get_channel(ctx.channel.id)
-        tMusic.loop.create_task(channel.send(file = file, embed = embed)) 
-        
+        if (currentSongs[ctx.message.guild.id] != currentSongs[ctx.message.guild.id].nextSong):
+            tMusic.loop.create_task(channel.send(file = file, embed = embed)) 
+        currentSongs[ctx.message.guild.id] = currentSongs[ctx.message.guild.id].nextSong
+
         return
 
 @tMusic.command(pass_context=True)
@@ -407,7 +431,7 @@ async def play(ctx, *, song: str = None):
             await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "You must be in the same VC as me to use this command", color = 0xFF0000))
             return
         voice.resume() #Otherwise resume the voice client
-        await ctx.reply(embed = nextcord.embeds.Embed(title = ":arrow_forward: Resumed", description = "Resuming the current song", color = 0x00008B))
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":arrow_forward: Resumed", description = "Resuming the current song", color = color))
         return
     if (not song and ctx.message.attachments == []):
         await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "You must provide a song to play", color = 0xFF0000))
@@ -436,13 +460,13 @@ async def play(ctx, *, song: str = None):
                     while (song.nextSong != None):
                         song = song.nextSong #find the last song in the queue; traverse the linked list
                         if (song == song.nextSong or song.nextSong == currentSongs[ctx.message.guild.id]): #If looping is enabled, break the loop since this could go on forever. 
-                            break
-                    song.nextSong = DonwloadedSong(songName, ctx.message.guild.id)
+                            break                    
+                    song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
                 else:
                     currentSongs[ctx.message.guild.id] = DonwloadedSong(songName, ctx.message.guild.id)
                     song = currentSongs[ctx.message.guild.id]
                     checkQueue(ctx, True)
-                embed=nextcord.embeds.Embed(title=":notepad_spiral: Added to queue", description=playlist['name'], color=0x00008B)
+                embed=nextcord.embeds.Embed(title=":notepad_spiral: Added to queue", description=playlist['name'], color=color)
                 embed.set_thumbnail(playlist['images'][0]['url'])
                 await ctx.send(embed = embed)
                 await downloadSpotify(ctx,playlist)
@@ -464,12 +488,12 @@ async def play(ctx, *, song: str = None):
                             song = song.nextSong #find the last song in the queue; traverse the linked list
                             if (song == song.nextSong or song.nextSong == currentSongs[ctx.message.guild.id]): #If looping is enabled, break the loop since this could go on forever. 
                                 break
-                        song.nextSong = DonwloadedSong(songName, ctx.message.guild.id)
+                        song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
                     else:
-                        currentSongs[ctx.message.guild.id] = DonwloadedSong(songName, ctx.message.guild.id)
+                        currentSongs[ctx.message.guild.id] = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
                         song = currentSongs[ctx.message.guild.id]
                         checkQueue(ctx, True)
-                    embed=nextcord.embeds.Embed(title=":notepad_spiral: Added to queue", description=playlist['title'], color=0x00008B)
+                    embed=nextcord.embeds.Embed(title=":notepad_spiral: Added to queue", description=playlist['title'], color=color)
                     embed.set_thumbnail(playlist['picture_xl'])
                     await ctx.send(embed = embed)
                     await downloadDeezer(ctx,playlist)
@@ -515,17 +539,18 @@ async def play(ctx, *, song: str = None):
                 song = song.nextSong #find the last song in the queue; traverse the linked list
                 if (song == song.nextSong or song.nextSong == currentSongs[ctx.message.guild.id]): #If looping is enabled, break the loop since this could go on forever. 
                     break
-            song.nextSong = DonwloadedSong(songName, ctx.message.guild.id)
+            song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
             embed = nextcord.embeds.Embed(title=":notepad_spiral: Added to Queue", description=songName, color= color)
             file = song.nextSong.getAlbumArt()
             embed.set_thumbnail(url="attachment://albumArt.jpg")
             await message.delete()
             await ctx.send(file = file, embed=embed)
             return
-        currentSongs[ctx.message.guild.id] = DonwloadedSong(songName, ctx.message.guild.id)
+        currentSongs[ctx.message.guild.id] = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
         embed = nextcord.embeds.Embed(title=":notes: Now Playing", description=songName, color=color)
         file = currentSongs[ctx.message.guild.id].getAlbumArt()
         embed.set_thumbnail(url="attachment://albumArt.jpg")
+        embed.set_footer(text=f"Requested by {ctx.message.author.name}")
         await message.delete()
         await ctx.send(file = file, embed=embed)
         checkQueue(ctx, True)
@@ -574,11 +599,91 @@ async def leave(ctx):
         return
     await voice.disconnect()
     await ctx.reply(embed = nextcord.embeds.Embed(title=":wave: Left Voice Channel", description="Goodbye!", color=color))
-    currentSongs[ctx.message.guild.id] = None
+    del currentSongs[ctx.message.guild.id]
+    import gc
+    gc.collect()
     try:
         shutil.rmtree(str(ctx.message.guild.id))
     except OSError as e:
         pass
+
+@tMusic.command(pass_context = True)
+async def search(ctx, limit = 5, *, query):
+    #use deezer API; search for query
+    await ctx.send("Searching for {}".format(query))
+    results = requests.get("https://api.deezer.com/search?q=" + query + "&limit=" + str(limit))
+    results = results.json()
+    embed=nextcord.embeds.Embed(title="Search Results:", description="For query " + query, color=0xff004c)
+    for i in range (len(results['data'])):
+        embed.add_field(name=str(i + 1) + ". " + results['data'][i]['title_short'], value=results['data'][i]['artist']['name'], inline=False)
+    await ctx.send(embed=embed)
+    await ctx.send("Please select a song to add to the queue")
+    #wait for user to select song, with 1 second timeout. Send message on timeout
+    try:
+        song = await tMusic.wait_for('message', check=lambda message: message.author == ctx.message.author, timeout=5)
+        await ctx.invoke(tMusic.get_command('play'), song = results['data'][int(song.content) - 1]['link'])
+    except:
+        await ctx.send("tMusic timed out waiting for input")
+    
+@tMusic.command(pass_context=True, aliases=['l', 'Lyrics'])
+async def lyrics(ctx):
+    #check if the song has lyrics
+    if (currentSongs[ctx.message.guild.id] == None):
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "There is nothing playing", color = 0xFF0000))
+        return
+    #check if .lrc file exists for that song
+    songLyrics = currentSongs[ctx.message.guild.id].getLyrics()
+    if (not songLyrics == None): #if the song has lyrics in it's tags
+        embed = nextcord.embeds.Embed(title = "Lyrics for " + currentSongs[ctx.message.guild.id].getSongName(), description = songLyrics, color = color)
+        await ctx.send(embed = embed)
+        return
+    #if we're here, the song has no lyrics in it's tags; we need to get it from an API
+    results = genius.search(currentSongs[ctx.message.guild.id].getSongName())
+    if (len(results['hits']) == 0):
+        await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "No lyrics found", color = 0xFF0000))
+        return
+    id = (results['hits'][0]['result']['api_path'].split('/')[-1])
+    embed = nextcord.embeds.Embed(title = "Lyrics for " + currentSongs[ctx.message.guild.id].getSongName(), description = genius.lyrics(id), color = color)
+    embed.set_footer("Lyrics provided by Genius.com")
+    await ctx.send(embed = embed)
+
+
+@tMusic.command(pass_context=True, aliases=['RickRoll', 'RickRolled', 'rickrolled', 'Rickrolled'])
+async def rickRoll(ctx):
+    """
+    TODO: implement rickRoll command
+    """
+    await ctx.send("This command is not yet implemented")
+
+@tMusic.command(pass_context=True, aliases=['rem', 'del', 'Rem'])
+async def remove(ctx, index: int = 1):
+    """
+    Command which removes a song from the queue
+    """
+    voice = nextcord.utils.get(tMusic.voice_clients,guild=ctx.guild) #Getting the voice client - this will tell us if tMusic is connected to a voice channel or not
+    if (not voice):
+        await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="I am not in a voice channel", color=0xff0000))
+        return
+    if (not ctx.message.author.voice):
+        await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="You are not in a voice channel", color=0xff0000))
+        return
+    if (not inSameVC(ctx)):
+        await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="You must be in the same voice channel as me to use this command", color=0xff0000))
+        return
+    if (index == 0):
+        await ctx.send(embed = nextcord.embeds.Embed(title=":x: Error", description="You cannot remove the currently playing song", color=0xff0000))
+        return
+    #if we're here all the checks have passed; remove the song from the queue
+    #find the index we need to remove
+    song = currentSongs[ctx.message.guild.id]
+    #traverse the linked list index times
+    for i in range (index-1):
+        song = song.nextSong
+    if (song == None):
+        await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="That song doesn't exist in the queue", color=0xff0000))
+        return
+    await ctx.reply(embed = nextcord.embeds.Embed(title=":white_check_mark: Song removed", description="Removed " + song.nextSong.getSongName(), color=color))
+    song.nextSong = song.nextSong.nextSong
 
 @tMusic.command(pass_context=True, aliases=['Queue', 'songList', 'songs', 'SongList', 'Songs'])
 async def queue(ctx):
@@ -592,20 +697,30 @@ async def queue(ctx):
     embed = nextcord.embeds.Embed(title=":notepad_spiral: Queue", description="", color=color)
     i = 1
     while (song != None):
-        embed.add_field(name = str(i), value=song.getSongName(), inline=False)
+        embed.add_field(name = song.getSongName(), value=f"Requested by {song.getRequester()}", inline=False)
         if (song == song.nextSong or song.nextSong == currentSongs[ctx.message.guild.id]): #If looping is enabled, break the loop since this could go on forever. 
             break
         song = song.nextSong
         i += 1
     await ctx.send(embed = embed)
 
-@tMusic.command(pass_context=True, aliases=['currentSong', 'CurrentSong', 'whatsPlaying', 'WhatsPlaying'])
+def secsToMins(secs):
+    mins = int(secs / 60)
+    secs = int(secs % 60)
+    if (secs < 10):
+        secs = "0" + str(secs)
+    return str(mins) + ":" + str(secs)
+
+@tMusic.command(pass_context=True, aliases=['currentSong', 'CurrentSong', 'whatsPlaying', 'WhatsPlaying', 'nowPlaying', 'NowPlaying'])
 async def song(ctx):
     song = currentSongs[ctx.message.guild.id]
     file = song.getAlbumArt()
-    await ctx.send(file = file, embed = nextcord.embeds.Embed(title=":notes: Now Playing", description=song.getSongName(), color=color))
+    embed = nextcord.embeds.Embed(title=":musical_note: Now Playing", description=song.getSongName() + f" ({secsToMins(time.time() - song.getStartTime())}/{secsToMins(song.getDuration())})", color=color)
+    embed.set_thumbnail(url="attachment://albumArt.jpg")
+    embed.set_footer(text="Requested by " + song.getRequester())
+    await ctx.send(file = file, embed = embed)
 
-@tMusic.command(pass_context=True, aliases=['Skip', 'next', 'Next'])
+@tMusic.command(pass_context=True, aliases=['Skip', 'next', 'Next', 's', 'S'])
 async def skip(ctx, amount = 1):
     """
     Command which skips the current song
