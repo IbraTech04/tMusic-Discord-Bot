@@ -1,3 +1,4 @@
+from typing_extensions import Self
 import nextcord
 from nextcord import FFmpegOpusAudio
 import os
@@ -57,3 +58,7 @@ class DonwloadedSong():
         return self.lyrics != None
     def getLyrics(self):
         return self.lyrics
+
+class InProgressSong():
+    def __init__(self) -> None:
+        pass

@@ -2,17 +2,12 @@
 # By IbraTech04 (github.com/IbraTech04)
 # Powered by Deemix and IbraSoft tApps 
 
-# Discord Imports, to interact with API
-
 from ast import alias
 import asyncio
 from cgitb import text
-from pickletools import read_unicodestring1
-import string
 import time
 import shutil
 from telnetlib import TM
-import threading
 import traceback
 from urllib.request import urlopen
 import requests
@@ -28,7 +23,7 @@ from Errors import *
 from song import *
 from lyricsgenius import Genius
 import pylrc
-
+import types
 import json
 import os
 import re
@@ -38,6 +33,9 @@ from tqdm import tqdm
 from api import Spotify
 from cli import parse_cmd
 from tinytag import TinyTag
+
+from nextcord import Interaction, SlashOption, ChannelType
+from nextcord.abc import GuildChannel
 
 SPOTIPY_CLIENT_ID = 'c630433b292d477990ebb8dcc283b8f5'
 SPOTIPY_CLIENT_SECRET = 'a96c46ec319a4e878d3ac80058301041'
@@ -80,7 +78,7 @@ async def downloadSpotify(ctx, playlist):
     song = currentSongs[ctx.message.guild.id]
     while (song.nextSong):
         song = song.nextSong
-    
+    song.nextSong = InProgressSong()
     directory = os.path.join(os.path.dirname(os.path.realpath(__file__)),str(ctx.message.guild.id))
     if (not os.path.isdir(directory)):
         #make directory
@@ -89,8 +87,9 @@ async def downloadSpotify(ctx, playlist):
         try:
         #download the song 
             songName = await downloadSong(playlist['tracks']['items'][i]['track']['external_urls']['spotify'], ctx)
-            song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), time.time(), str(ctx.message.author))
+            song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
             song = song.nextSong
+            song = InProgressSong()
         except:
             pass
 
@@ -103,7 +102,7 @@ async def downloadDeezer(ctx, playlist):
     song = currentSongs[ctx.message.guild.id]
     while (song.nextSong):
         song = song.nextSong
-    
+    song.nextSong = InProgressSong()
     directory = os.path.join(os.path.dirname(os.path.realpath(__file__)),str(ctx.message.guild.id))
     if (not os.path.isdir(directory)):
         #make directory
@@ -114,6 +113,7 @@ async def downloadDeezer(ctx, playlist):
             songName = await downloadSong(playlist["tracks"]["data"][i]["link"], ctx)
             song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), time.time(), str(ctx.message.author))
             song = song.nextSong
+            song = InProgressSong()
         except:
             pass
 
@@ -445,6 +445,24 @@ async def loop(ctx, type: str = None):
         await ctx.reply(embed = nextcord.embeds.Embed(title = "Looping queue", description = "Looping the queue. If you would like to disable queue looping, add another song to the queue, or clear the queue", color=color))
         return
     await ctx.reply(embed = nextcord.embeds.Embed(title = "Invalid loop type", description = "Valid loop types are: song, queue", color=0xff000))
+
+@tMusic.slash_command(name="ping", description="Triggers a reply from tMusic", guild_ids=[518573248968130570])
+async def ping(interaction: Interaction):
+    await interaction.response.send_message("Pong!")
+    
+@tMusic.slash_command(name = "play", description = "Joins the VC you are in", guild_ids=[518573248968130570])
+async def play(interaction: Interaction):
+    #Check if the user is in a VC
+    if (interaction.user.voice == None):
+        await interaction.response.send_message("You must be in a VC to use this command", ephemeral=True)
+        return
+    if (interaction.guild.voice_client != None):
+        await interaction.response.send_message("I'm already in a VC", ephemeral=True)
+        return
+    #If we're here, the user is in a VC and the bot isn't; We can join the VC
+    await interaction.user.voice.channel.connect()
+
+
 @tMusic.command(pass_context=True)
 async def ping(ctx):
     """
@@ -460,7 +478,7 @@ def checkQueue(ctx, firstSong: bool):
     voice = ctx.guild.voice_client
     if (firstSong):
         player = voice.play(currentSongs[ctx.message.guild.id].getAudio(), after=lambda x=None: (checkQueue(ctx, False)))
-        
+        currentSongs[ctx.message.guild.id].startTime = time.time()
         return
     if (not currentSongs[ctx.message.guild.id].nextSong == None and voice):
         currentSongs[ctx.message.guild.id].nextSong.startTime = time.time()
@@ -534,7 +552,7 @@ async def play(ctx, *, song: str = None):
                             break                    
                     song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
                 else:
-                    currentSongs[ctx.message.guild.id] = DonwloadedSong(songName, ctx.message.guild.id)
+                    currentSongs[ctx.message.guild.id] = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
                     song = currentSongs[ctx.message.guild.id]
                     checkQueue(ctx, True)
                 embed=nextcord.embeds.Embed(title=":notepad_spiral: Added to queue", description=playlist['name'], color=color)
@@ -790,6 +808,12 @@ async def syncedLyrics(ctx):
     songPlayTime = time.time() - currentSongs[ctx.message.guild.id].getStartTime()
     closest = (min(times, key=lambda x:abs(x-songPlayTime)))
     index = times.index(closest)
+    
+    if (times[index] > songPlayTime):
+        index -= 1
+    if (index < 0):
+        index = 0
+    
     startIndex = index - 2
     if (startIndex < 0):
         startIndex = 0
@@ -893,8 +917,11 @@ async def skip(ctx, amount = 1):
     if (not voice.is_playing()):
         await ctx.reply(embed=nextcord.embeds.Embed(title=":x: Error", description="I am not playing anything", color=0xff0000))
         return
-    if (not currentSongs[ctx.message.guild.id].nextSong):
-        await ctx.reply(embed=nextcord.embeds.Embed(title=":x: Error", description="There is nothing in the queue. Try tPause instead", color=0xff0000))
+
+    #Check if the next song in the queue is an inprogresssong
+
+    if (isinstance(currentSongs[ctx.message.guild.id].nextSong, InProgressSong)):
+        await ctx.reply(embed=nextcord.embeds.Embed(title=":x: Error", description="Hold your horses! A playlist is still being added, and the next track is still being processed. Please wait until the next track is loaded before using tSkip.", color=0xff0000).set_footer(text="Hint: Use `tQueue` to see the current queue and view our song loading progress"))
         return
     embed = nextcord.embeds.Embed(title=":fast_forward: Skipped", description="{0}".format(currentSongs[ctx.message.guild.id].getSongName()), color=color)
     await ctx.send(embed=embed)
