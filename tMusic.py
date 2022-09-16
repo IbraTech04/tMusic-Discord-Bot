@@ -20,6 +20,7 @@ import subprocess
 import youtube_dl
 from bs4 import BeautifulSoup
 from Errors import *
+from exceptions import NotValidSp_Dc
 from song import *
 from lyricsgenius import Genius
 import pylrc
@@ -792,6 +793,11 @@ async def syncedLyrics(ctx):
         #if we're here, we can use syrics to get the lyrics
         try:
             await download_lyrics(song['tracks']['items'][0], str(ctx.message.guild.id) + "/" + songName + ".lrc")
+        except NotValidSp_Dc as e:
+            channel = tMusic.get_channel(1010952626185179206)
+            user = tMusic.get_user(516413751155621899)
+            tMusic.loop.create_task(channel.send(user.mention + " My Spotify token has expired. Please update it!"))
+            await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "It looks like one of my API keys is out of date, sorry. I've reported this bug to my owner, please try again later", color = 0xFF0000))
         except Exception as e:
             await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "Unfortunately this song does not have synced lyrics. You can try `tLyrics` instead", color = 0xFF0000))
             return
