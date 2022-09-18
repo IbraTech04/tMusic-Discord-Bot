@@ -221,7 +221,7 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
         #download song iwth scdl   
         proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         stdout, stderr = await proc.communicate() 
-        
+        print(stderr.decode())
         output = (stderr.decode('utf-8')).replace("\r", "").split("\n")[2][12:] #Getting songname from scdl output
         
         #Now we're done with getting hte songname. we need to get album art. We'll use beautiful soup to do this
