@@ -81,13 +81,13 @@ All of tMusics commands can be found within the `tHelp` command. This command wi
 In order for tMusic to function completely, it needs some tokens from you
 
 ### For Deemix: 
-    * Your `arl` is required. To obtain it, you need to create and log into a Deezer account. Once logged in from the Deezer homepage, open DevTools (Inspect Element) using `Ctrl + Shift + I`. Navigate to the `Application` tab, and then to `Cookies`. Find the cookie named `arl`, and copy the value. This is your `arl` token. 
-    * Paste this into the `config/.arl` file.
+* Your `arl` is required. To obtain it, you need to create and log into a Deezer account. Once logged in from the Deezer homepage, open DevTools (Inspect Element) using `Ctrl + Shift + I`. Navigate to the `Application` tab, and then to `Cookies`. Find the cookie named `arl`, and copy the value. This is your `arl` token. 
+* Paste this into the `config/.arl` file.
 
 ### For Syrics (Synced Lyrics):
-    * Assuming you created a Spotify Developer account, have configured an application, and setup the environment variables, all that's left is to paste your sp_dc token. 
-    * To obtain this, you need to create and log into a Spotify account. Once logged in, open DevTools (Inspect Element) using `Ctrl + Shift + I`. Navigate to the `Application` tab, and then to `Cookies`. Find the cookie named `sp_dc`, and copy the value. This is your `sp_dc` token. 
-    * Paste this into the `config/.sp_dc` file.
+* Assuming you created a Spotify Developer account, have configured an application, and setup the environment variables, all that's left is to paste your sp_dc token. 
+* To obtain this, you need to create and log into a Spotify account. Once logged in, open DevTools (Inspect Element) using `Ctrl + Shift + I`. Navigate to the `Application` tab, and then to `Cookies`. Find the cookie named `sp_dc`, and copy the value. This is your `sp_dc` token. 
+* Paste this into the `config/.sp_dc` file.
 
 
 **NOTICE: This bot is a proof-of-concept, and is not meant to be used in production. I am not responsible for any reprocussions that result from the use of this bot**
