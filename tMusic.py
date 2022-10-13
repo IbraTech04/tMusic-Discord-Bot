@@ -1,6 +1,6 @@
 # tMusic Discord Music Bot V2022.8.1
 # By IbraTech04 (github.com/IbraTech04)
-# Parts of this code use Syrics
+# Parts of this code use Syrics (https://github.com/akashrchandran/syrics)
 # Powered by Deemix and IbraSoft tApps 
 
 import asyncio
