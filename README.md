@@ -35,6 +35,7 @@ I also didn't forget to add local file playback! You can now play music from you
     * Some tracks don't have synced lyrics at all :(
 * 320kbps audio quality! 
     * This is the highest quality audio of any music bot I've seen
+* Slash commands coming soon!
 
 ## Commands
 All of tMusics commands can be found within the `tHelp` command. This command will display all of the commands, and their descriptions. By typing `tHelp <command>`, you can get more information about a specific command. But alas, here are the basics:
