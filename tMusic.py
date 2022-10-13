@@ -1,8 +1,8 @@
 # tMusic Discord Music Bot V2022.8.1
 # By IbraTech04 (github.com/IbraTech04)
+# Parts of this code use Syrics
 # Powered by Deemix and IbraSoft tApps 
 
-from ast import alias
 import asyncio
 from cgitb import text
 import time
@@ -16,7 +16,6 @@ from nextcord.ext import commands
 from subprocess import Popen, PIPE
 import os
 import spotipy
-import subprocess
 import youtube_dl
 from bs4 import BeautifulSoup
 from Errors import *
@@ -24,10 +23,7 @@ from exceptions import NotValidSp_Dc
 from song import *
 from lyricsgenius import Genius
 import pylrc
-import types
-import json
 import os
-import re
 
 from tqdm import tqdm
 
@@ -42,9 +38,7 @@ SPOTIPY_CLIENT_ID = 'c630433b292d477990ebb8dcc283b8f5'
 SPOTIPY_CLIENT_SECRET = 'a96c46ec319a4e878d3ac80058301041'
 sp = spotipy.Spotify(client_credentials_manager=spotipy.SpotifyClientCredentials(client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET))
 
-GENUIS_CLIENT_ID = 'Chx7q6AqZyjgCRkmV52NK4zkqO4KiKQF5qaLI4C_UhIs-Zf7HK9_q3yEpVjcwTEz'
-GENIUS_SECRET = 'blXkhbM_tgAVin1Cq_nFUljGk2EFvBlG-rWvAutqGHc1w4QwdyZZV9evlrQTaWpPU69L7BUrCKzyOC3xYceEqQ'
-GENIUS_TOKEN = 'sorYarHPpZGFsmSPDipAnaPxjicRCAGaX01rmHgGwDME1Fjv-EujD56xlL44T0ap'
+GENIUS_TOKEN = str(os.getenv('GeniusToken'))
 genius = Genius(GENIUS_TOKEN)
 color = 0xFF5F00
 #load file from config/.sp_dc
