@@ -13,7 +13,7 @@ I also wanted to make sure that the bot could play music from YouTube. I utilize
 
 Finally, for SoundCloud, I utilized a Python module called [Scdl](https://github.com/flyingrub/scdl) - Sadly SoundCloud support is in limbo at the moment due to how it saves the music files. I'm working on a fix for this at the moment. 
 
-I also didn't forget to add local file playback! You can now play music from your local machine, which is great for those who have a lot of music on their computer. One thing I've noticed is that many music bots (pretty much all of them....) don't extract ID3 tags from local files. Using (eyeD3)[https://eyed3.readthedocs.io/en/latest/], I was able to add this functionality and make tMusic feel like a truly seamless experience. You can now see the song name, artist, and album art for local files!
+I also didn't forget to add local file playback! You can now play music from your local machine, which is great for those who have a lot of music on their computer. One thing I've noticed is that many music bots (pretty much all of them....) don't extract ID3 tags from local files. Using [eyeD3](https://eyed3.readthedocs.io/en/latest/), I was able to add this functionality and make tMusic feel like a truly seamless experience. You can now see the song name, artist, and album art for local files!
 
 ## Features
 * Play music from YouTube, Deezer, Spotify, and SoundCloud
