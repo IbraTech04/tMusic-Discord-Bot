@@ -34,8 +34,8 @@ from tinytag import TinyTag
 from nextcord import Interaction, SlashOption, ChannelType
 from nextcord.abc import GuildChannel
 
-SPOTIPY_CLIENT_ID = 'c630433b292d477990ebb8dcc283b8f5'
-SPOTIPY_CLIENT_SECRET = 'a96c46ec319a4e878d3ac80058301041'
+SPOTIPY_CLIENT_ID = str(os.environ.get("SpotipyClientID"))
+SPOTIPY_CLIENT_SECRET = str(os.environ.get("SpotipyClientSecret"))
 sp = spotipy.Spotify(client_credentials_manager=spotipy.SpotifyClientCredentials(client_id=SPOTIPY_CLIENT_ID, client_secret=SPOTIPY_CLIENT_SECRET))
 
 GENIUS_TOKEN = str(os.getenv('GeniusToken'))
@@ -939,6 +939,6 @@ async def on_message(message):
     await tMusic.process_commands(message)
 # Running the bot
 if (computerName == "IBRAPC"): # If the code is running on my computer, do not run the main bot - run the dev bot
-    tMusic.run(os.getenv('tMusicDevToken')) #Dev Token
+    tMusic.run(str(os.getenv('tMusicDevToken'))) #Dev Token
 else:
     tMusic.run(str(os.getenv('tMusicToken'))) #Main Token
