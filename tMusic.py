@@ -199,7 +199,7 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
     if (deezer):
         proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=25)
         except asyncio.TimeoutError:
             #throw new error called ARLException
             raise ARLException("ARL Error")
