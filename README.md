@@ -67,7 +67,7 @@ All of tMusics commands can be found within the `tHelp` command. This command wi
 * [bs4](https://pypi.org/project/beautifulsoup4/) - This is used to scrape various websites for information. You can install it using pip.
 
 ### Setup
-1. Clone the repository using `git clone
+1. Clone the repository using `git clone https://github.com/IbraTech04/tMusic-Discord-Bot`
 2. Install the requirements using `pip install -r requirements.txt`
 3. Create environment variables for the following:
     * `tMusicToken` - This is your Discord Bot Token. You can get this from the [Discord Developer Portal](https://discord.com/developers/applications).
