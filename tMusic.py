@@ -26,6 +26,7 @@ import pylrc
 import os
 
 from tqdm import tqdm
+import textwrap
 
 from api import Spotify
 from cli import parse_cmd
@@ -213,11 +214,15 @@ async def downloadSong (songName, ctx): #Downloads the song and returns the path
 
     else:
         #download song iwth scdl   
+        # Make a list of all files in the directory
+        files = set(os.listdir(directory))
         proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         stdout, stderr = await proc.communicate() 
         print(stderr.decode())
-        output = (stderr.decode('utf-8')).replace("\r", "").split("\n")[2][12:] #Getting songname from scdl output
-        
+        newFiles = set(os.listdir(directory))
+        # Get the list of files that were created
+        files_created = list(newFiles - files)
+        output = files_created[0][:-4]
         #Now we're done with getting hte songname. we need to get album art. We'll use beautiful soup to do this
         htmldata = urlopen(songName) 
         soup = BeautifulSoup(htmldata, 'html.parser')
@@ -239,6 +244,7 @@ async def setARL(ctx, arl):
         await ctx.send("ARL Updated")
         return
     await ctx.send("You do not have permission to use this command. Only my owner can :pleading_face:")
+
 @tMusic.command(pass_context=True)
 async def setSPDC(ctx, arl):
     """
@@ -297,7 +303,8 @@ async def delete(ctx, amount: int):
     if (ctx.message.author.id == 516413751155621899):
         #delete the amount of messages specified
         await ctx.message.channel.purge(limit=amount + 1)
-@tMusic.command(pass_context = True, aliases=["help", "Help", "HelpMeWithThisStupidBot", "Commands", 'about', 'aboutme', 'About', 'AboutMe'])
+
+@tMusic.command(pass_context=True)
 async def commands(ctx, command: str = None):
     if (not command):
         embed=nextcord.embeds.Embed(color=color)
@@ -488,6 +495,19 @@ def checkQueue(ctx, firstSong: bool):
         currentSongs[ctx.message.guild.id] = currentSongs[ctx.message.guild.id].nextSong
 
         return
+    # If we're here, there are no more songs in the queue; Delete the entry in the dictionary
+    if voice:
+        embed = nextcord.embeds.Embed(title=":notes: Queue finished", description="There are no more songs in the queue", color=color)
+        channel = tMusic.get_channel(ctx.channel.id)
+        tMusic.loop.create_task(channel.send(embed = embed))
+        currentSongs[ctx.message.guild.id] = None
+        del currentSongs[ctx.message.guild.id]
+        import gc
+        gc.collect()
+        try:
+            shutil.rmtree(str(ctx.message.guild.id))
+        except OSError as e:
+            pass
 
 @tMusic.command(pass_context=True)
 async def printAllEmojis(ctx):
@@ -505,7 +525,7 @@ async def play(ctx, *, song: str = None):
     If there is a song currently in the VC, it will be queued.
     This mode also supports files attached to the message
     """
-    loadingEmoji = tMusic.get_emoji(1009876091927805972) #Loading emoji - spinning circle shown while song is loading
+    loadingEmoji = tMusic.get_emoji(1010303111560167516) #Loading emoji - spinning circle shown while song is loading
     voice = nextcord.utils.get(tMusic.voice_clients,guild=ctx.guild) #Getting the voice client - this will tell us if tMusic is connected to a voice channel or not
     if (not ctx.message.author.voice or not ctx.message.author.voice.channel): #If the author is not in a voice channel, tell them to join one
         await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "You must be in a voice channel to use this command", color = 0xFF0000))
@@ -624,14 +644,14 @@ async def play(ctx, *, song: str = None):
                 if (song == song.nextSong or song.nextSong == currentSongs[ctx.message.guild.id]): #If looping is enabled, break the loop since this could go on forever. 
                     break
             song.nextSong = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
-            embed = nextcord.embeds.Embed(title=":notepad_spiral: Added to Queue", description=songName, color= color)
+            embed = nextcord.embeds.Embed(title=":notepad_spiral: Added to Queue", description= song.nextSong.getSongName(), color= color)
             file = song.nextSong.getAlbumArt()
             embed.set_thumbnail(url="attachment://albumArt.jpg")
             await message.delete()
             await ctx.send(file = file, embed=embed)
             return
         currentSongs[ctx.message.guild.id] = DonwloadedSong(songName, ctx.message.guild.id, time.time(), str(ctx.message.author))
-        embed = nextcord.embeds.Embed(title=":notes: Now Playing", description=songName, color=color)
+        embed = nextcord.embeds.Embed(title=":notes: Now Playing", description=currentSongs[ctx.message.guild.id].getSongName(), color=color)
         file = currentSongs[ctx.message.guild.id].getAlbumArt()
         embed.set_thumbnail(url="attachment://albumArt.jpg")
         embed.set_footer(text=f"Requested by {ctx.message.author.name}")
@@ -718,8 +738,14 @@ async def lyrics(ctx):
     #check if .lrc file exists for that song
     songLyrics = currentSongs[ctx.message.guild.id].getLyrics()
     if (not songLyrics == None): #if the song has lyrics in it's tags
-        embed = nextcord.embeds.Embed(title = "Lyrics for " + currentSongs[ctx.message.guild.id].getSongName(), description = songLyrics, color = color)
-        await ctx.send(embed = embed)
+        
+        # We want to split the message up because we only have 2000 characters to work with
+        # But we also don't want to split up words
+        # Use TextWrap module to do this
+        chunks = textwrap.wrap(songLyrics, 4096)
+        for chunk in chunks:
+            embed = nextcord.embeds.Embed(title = "Lyrics for " + currentSongs[ctx.message.guild.id].getSongName(), description = chunk, color = color)
+            await ctx.send(embed = embed)
         return
     #if we're here, the song has no lyrics in it's tags; we need to get it from an API
     results = genius.search(currentSongs[ctx.message.guild.id].getSongName())
@@ -727,9 +753,12 @@ async def lyrics(ctx):
         await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "No lyrics found", color = 0xFF0000))
         return
     id = (results['hits'][0]['result']['api_path'].split('/')[-1])
-    embed = nextcord.embeds.Embed(title = "Lyrics for " + currentSongs[ctx.message.guild.id].getSongName(), description = genius.lyrics(id), color = color)
-    embed.set_footer(text = "Lyrics provided by Genius.com")
-    await ctx.send(embed = embed)
+    songLyrics = genius.lyrics(id)
+    chunks = textwrap.wrap(songLyrics, 6000)
+    for chunk in chunks:
+        embed = nextcord.embeds.Embed(title = "Lyrics for " + currentSongs[ctx.message.guild.id].getSongName(), description = chunk, color = color)
+        await ctx.send(embed = embed)
+    return
 
 async def sanitize_track_data(track_data: dict):
     album_data = track_data['album']
@@ -773,7 +802,7 @@ async def download_lyrics(track, fileName):
 async def syncedLyrics(ctx):
     #In order for this to work, the song must have a .lrc file 
     #but before taht we need to check if a file is playing
-    if (currentSongs[ctx.message.guild.id] == None):
+    if (currentSongs.get(ctx.message.guild.id) == None):
         await ctx.reply(embed = nextcord.embeds.Embed(title = ":x: Error", description = "There is nothing playing", color = 0xFF0000))
         return
     songName = currentSongs[ctx.message.guild.id].getSongName()
@@ -866,12 +895,12 @@ async def remove(ctx, index: int = 1):
     await ctx.reply(embed = nextcord.embeds.Embed(title=":white_check_mark: Song removed", description="Removed " + song.nextSong.getSongName(), color=color))
     song.nextSong = song.nextSong.nextSong
 
-@tMusic.command(pass_context=True, aliases=['Queue', 'songList', 'songs', 'SongList', 'Songs'])
+@tMusic.command(pass_context=True, aliases=['Queue', 'songList', 'songs', 'SongList', 'Songs', 'q', 'Q'])
 async def queue(ctx):
     """
     Command which displays the queue of songs
     """
-    if (not currentSongs[ctx.message.guild.id]):
+    if (not currentSongs.get(ctx.message.guild.id)):
         await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="There is nothing in the queue", color=0xff0000))
         return
     song = currentSongs[ctx.message.guild.id]
@@ -893,12 +922,18 @@ def secsToMins(secs):
     return str(mins) + ":" + str(secs)
 
 @tMusic.command(pass_context=True, aliases=['currentSong', 'CurrentSong', 'whatsPlaying', 'WhatsPlaying', 'nowPlaying', 'NowPlaying', 'nowplaying'])
-async def song(ctx):
+async def song(ctx, info = None):
+    if (not currentSongs.get(ctx.message.guild.id)):
+        await ctx.reply(embed = nextcord.embeds.Embed(title=":x: Error", description="There is nothing playing", color=0xff0000))
+        return
     song = currentSongs[ctx.message.guild.id]
+    print(song.getSongName())
     file = song.getAlbumArt()
     embed = nextcord.embeds.Embed(title=":musical_note: Now Playing", description=song.getSongName() + f" ({secsToMins(time.time() - song.getStartTime())}/{secsToMins(song.getDuration())})", color=color)
     embed.set_thumbnail(url="attachment://albumArt.jpg")
     embed.set_footer(text="Requested by " + song.getRequester())
+    if info:
+        embed.add_field(name="Song Info", value=f"Duration: {secsToMins(song.getDuration())} | Info: {song.getSongDescription()}", inline=False)
     await ctx.send(file = file, embed = embed)
 
 @tMusic.command(pass_context=True, aliases=['Skip', 'next', 'Next', 's', 'S'])
